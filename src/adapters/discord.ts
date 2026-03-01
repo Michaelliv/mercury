@@ -22,22 +22,6 @@ import { logger } from "../logger.js";
 import type { Db } from "../storage/db.js";
 
 /**
- * Derive the mercury group ID from a Discord thread.
- *
- * Discord thread IDs are encoded as "discord:{guildId}:{channelId}" or
- * "discord:{guildId}:{channelId}:{threadId}".
- * We group by channel, so the group ID is "discord:{channelId}".
- */
-export function discordGroupId(threadId: string): string {
-  const parts = threadId.split(":");
-  if (parts.length >= 3 && parts[0] === "discord") {
-    return `discord:${parts[2]}`;
-  }
-  // Fallback — use the full thread ID
-  return threadId;
-}
-
-/**
  * Determine if a Discord thread is a DM.
  * DMs have guildId === "@me".
  */
@@ -99,7 +83,7 @@ export function createDiscordMessageHandler(
       );
     }
 
-    const groupId = discordGroupId(thread.id);
+    const groupId = thread.id;
     const callerId = discordCallerId(message);
     const isDM = isDiscordDM(thread.id);
 

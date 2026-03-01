@@ -5,7 +5,6 @@ import path from "node:path";
 import {
   createDiscordMessageHandler,
   discordCallerId,
-  discordGroupId,
   isDiscordDM,
 } from "../src/adapters/discord.js";
 import { type AppConfig, loadConfig } from "../src/config.js";
@@ -28,36 +27,6 @@ beforeEach(() => {
 
 afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
-});
-
-// ---------------------------------------------------------------------------
-// Unit: discordGroupId
-// ---------------------------------------------------------------------------
-
-describe("discordGroupId", () => {
-  test("extracts channel ID from standard thread ID", () => {
-    expect(discordGroupId("discord:111222333:444555666")).toBe(
-      "discord:444555666",
-    );
-  });
-
-  test("extracts channel ID when thread ID is present", () => {
-    expect(discordGroupId("discord:111222333:444555666:777888999")).toBe(
-      "discord:444555666",
-    );
-  });
-
-  test("handles DM thread IDs (@me guild)", () => {
-    expect(discordGroupId("discord:@me:444555666")).toBe("discord:444555666");
-  });
-
-  test("falls back to full string for unknown format", () => {
-    expect(discordGroupId("something-else")).toBe("something-else");
-  });
-
-  test("falls back for two-part IDs", () => {
-    expect(discordGroupId("discord:onlyGuild")).toBe("discord:onlyGuild");
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -129,7 +98,7 @@ describe("createDiscordMessageHandler", () => {
     expect(core.handleRawInput).toHaveBeenCalledTimes(1);
     const call = (core.handleRawInput as ReturnType<typeof mock>).mock
       .calls[0][0];
-    expect(call.groupId).toBe("discord:444555666");
+    expect(call.groupId).toBe("discord:111222333:444555666");
     expect(call.callerId).toBe("discord:U123");
     expect(call.isDM).toBe(false);
     expect(call.source).toBe("chat-sdk");
@@ -168,7 +137,7 @@ describe("createDiscordMessageHandler", () => {
 
     const call = (core.handleRawInput as ReturnType<typeof mock>).mock
       .calls[0][0];
-    expect(call.groupId).toBe("discord:444555666");
+    expect(call.groupId).toBe("discord:@me:444555666");
     expect(call.isDM).toBe(true);
 
     expect(dmThread.post).toHaveBeenCalledWith("Hi from DM!");
@@ -304,8 +273,8 @@ describe("createDiscordMessageHandler", () => {
 
     const call = (core.handleRawInput as ReturnType<typeof mock>).mock
       .calls[0][0];
-    // Group ID should still be channel-level
-    expect(call.groupId).toBe("discord:444555666");
+    // Group ID is now the full thread ID (including guild and sub-thread)
+    expect(call.groupId).toBe("discord:111222333:444555666:999000111");
   });
 });
 
