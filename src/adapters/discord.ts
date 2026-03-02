@@ -87,10 +87,15 @@ export function createDiscordMessageHandler(
     const callerId = discordCallerId(message);
     const isDM = isDiscordDM(thread.id);
 
+    // Extract reply flag from message metadata (set by discord-native adapter)
+    const isReplyToBot =
+      (message.metadata as { isReplyToBot?: boolean })?.isReplyToBot ?? false;
+
     logger.debug("Discord inbound", {
       groupId,
       callerId,
       isDM,
+      isReplyToBot,
       threadId: thread.id,
       preview: text.slice(0, 120),
     });
@@ -108,7 +113,10 @@ export function createDiscordMessageHandler(
       });
       const triggerResult = matchTrigger(text, triggerConfig, isDM);
 
-      if (triggerResult.matched) {
+      // Start typing if trigger matched or reply to bot
+      const shouldStartTyping =
+        triggerResult.matched || (isReplyToBot && !isDM);
+      if (shouldStartTyping) {
         if (isNew) await thread.subscribe();
         await thread.startTyping();
       }
@@ -119,6 +127,7 @@ export function createDiscordMessageHandler(
         callerId,
         authorName: message.author.userName,
         isDM,
+        isReplyToBot,
         source: "chat-sdk",
       });
 

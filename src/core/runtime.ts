@@ -114,6 +114,7 @@ export class MercuryCoreRuntime {
     callerId: string;
     authorName?: string;
     isDM: boolean;
+    isReplyToBot?: boolean;
     source: Exclude<InputSource, "scheduler">;
     attachments?: MessageAttachment[];
   }): Promise<RouteResult & { reply?: string }> {
@@ -122,6 +123,7 @@ export class MercuryCoreRuntime {
       groupId: input.groupId,
       callerId: input.callerId,
       isDM: input.isDM,
+      isReplyToBot: input.isReplyToBot,
       db: this.db,
       config: this.config,
     });

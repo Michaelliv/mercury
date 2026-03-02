@@ -88,6 +88,12 @@ export function createSlackMessageHandler(opts: SlackMessageHandlerOptions) {
     const callerId = slackCallerId(message);
     const isDM = isSlackDM(thread.id);
 
+    // Slack reply-to-bot detection is not implemented.
+    // Slack's threading model is different — users typically @ mention in threads.
+    // For thread participation detection, would need to fetch thread history.
+    // TODO: Implement basic parent-message check if needed.
+    const isReplyToBot = false;
+
     logger.debug("Slack inbound", {
       groupId,
       callerId,
@@ -120,6 +126,7 @@ export function createSlackMessageHandler(opts: SlackMessageHandlerOptions) {
         callerId,
         authorName: message.author.userName,
         isDM,
+        isReplyToBot,
         source: "chat-sdk",
       });
 

@@ -421,12 +421,29 @@ export class DiscordNativeAdapter
       msg.mentions.users.has(this.client.user?.id || "") ||
       msg.content.includes(`<@${this.client.user?.id}>`);
 
+    // Check if this is a reply to one of our messages
+    let isReplyToBot = false;
+    if (msg.reference?.messageId && this.client.user?.id) {
+      try {
+        const channel = msg.channel;
+        if ("messages" in channel) {
+          const repliedTo = await channel.messages.fetch(
+            msg.reference.messageId,
+          );
+          isReplyToBot = repliedTo.author.id === this.client.user.id;
+        }
+      } catch {
+        // Referenced message may be deleted or inaccessible
+      }
+    }
+
     logger.debug("Discord native inbound", {
       guildId,
       channelId,
       threadId,
       isDM,
       isMention,
+      isReplyToBot,
       preview: text.slice(0, 80),
     });
 
@@ -447,6 +464,8 @@ export class DiscordNativeAdapter
       metadata: {
         dateSent: msg.createdAt,
         edited: msg.editedAt !== null,
+        // Store reply flag in metadata for downstream consumers
+        ...({ isReplyToBot } as Record<string, unknown>),
       },
       attachments: msg.attachments.map((a) => ({
         type: this.getAttachmentType(a.contentType),

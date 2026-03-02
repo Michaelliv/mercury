@@ -229,3 +229,66 @@ describe("routeInput — per-group trigger config", () => {
     expect(r2.type).toBe("ignore");
   });
 });
+
+describe("routeInput — reply-to-bot behavior", () => {
+  test("reply to bot triggers response without explicit mention", () => {
+    const r = route({
+      rawText: "what about tomorrow?",
+      isReplyToBot: true,
+      callerId: "user1",
+    });
+    expect(r.type).toBe("assistant");
+    if (r.type === "assistant") {
+      expect(r.prompt).toBe("what about tomorrow?");
+    }
+  });
+
+  test("reply to bot uses full text (no trigger stripping)", () => {
+    const r = route({
+      rawText: "can you explain more?",
+      isReplyToBot: true,
+      callerId: "user1",
+    });
+    expect(r.type).toBe("assistant");
+    if (r.type === "assistant") {
+      expect(r.prompt).toBe("can you explain more?");
+    }
+  });
+
+  test("reply to bot in DM does not double-trigger", () => {
+    // DMs already auto-trigger, so reply flag shouldn't change behavior
+    const r = route({
+      rawText: "hello",
+      isDM: true,
+      isReplyToBot: true,
+      callerId: "user1",
+    });
+    expect(r.type).toBe("assistant");
+    if (r.type === "assistant") {
+      expect(r.prompt).toBe("hello");
+    }
+  });
+
+  test("non-reply without trigger is ignored", () => {
+    const r = route({
+      rawText: "random message",
+      isReplyToBot: false,
+      callerId: "user1",
+    });
+    expect(r.type).toBe("ignore");
+  });
+
+  test("reply to bot with trigger present strips trigger", () => {
+    // If user replies AND includes trigger, trigger stripping should work
+    const r = route({
+      rawText: "@Pi what about tomorrow?",
+      isReplyToBot: true,
+      callerId: "user1",
+    });
+    expect(r.type).toBe("assistant");
+    if (r.type === "assistant") {
+      // Trigger matched, so prompt is stripped
+      expect(r.prompt).toBe("what about tomorrow?");
+    }
+  });
+});

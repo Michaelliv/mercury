@@ -493,6 +493,12 @@ export class WhatsAppBaileysAdapter
       (botJid && areJidsSameUser(jid, botJid)) ||
       (botLid && areJidsSameUser(jid, botLid));
 
+    // Check if this is a reply to one of our messages
+    const quotedParticipant = contextInfo?.participant;
+    const isReplyToBot = quotedParticipant
+      ? isBotJid(quotedParticipant)
+      : false;
+
     // Replace bot's JID mention with configured userName so trigger patterns match
     for (const jid of mentionedJids) {
       if (isBotJid(jid)) {
@@ -553,6 +559,7 @@ export class WhatsAppBaileysAdapter
       remoteJid,
       sender,
       isReply: Boolean(replyContext),
+      isReplyToBot,
       hasMedia: attachments.length > 0,
       mediaType: mediaInfo?.type,
       preview: text.slice(0, 120),
@@ -579,9 +586,9 @@ export class WhatsAppBaileysAdapter
           Number(msg.messageTimestamp ?? Date.now() / 1000) * 1000,
         ),
         edited: false,
-        // Store attachments in metadata for downstream consumers
-        // Using spread to add custom property (not in MessageMetadata type)
-        ...({ attachments } as Record<string, unknown>),
+        // Store attachments and reply flag in metadata for downstream consumers
+        // Using spread to add custom properties (not in MessageMetadata type)
+        ...({ attachments, isReplyToBot } as Record<string, unknown>),
       },
       attachments: [],
     });
