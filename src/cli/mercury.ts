@@ -432,6 +432,9 @@ function generateLaunchdPlist(): string {
   const workDir = CWD;
   const { logDir } = getServicePaths();
 
+  // Capture current PATH so docker and other tools are available
+  const currentPath = process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin";
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -447,6 +450,11 @@ function generateLaunchdPlist(): string {
   </array>
   <key>WorkingDirectory</key>
   <string>${workDir}</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>${currentPath}</string>
+  </dict>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
