@@ -132,7 +132,7 @@ describe("tasks", () => {
     db.ensureGroup("g1");
     const id = db.createTask(
       "g1",
-      "*/5 * * * *",
+      { cron: "*/5 * * * *" },
       "check stuff",
       Date.now() + 60000,
       "user1",
@@ -142,6 +142,7 @@ describe("tasks", () => {
     const tasks = db.listTasks("g1");
     expect(tasks.length).toBe(1);
     expect(tasks[0].cron).toBe("*/5 * * * *");
+    expect(tasks[0].at).toBeNull();
     expect(tasks[0].prompt).toBe("check stuff");
     expect(tasks[0].createdBy).toBe("user1");
     expect(tasks[0].active).toBe(1);
@@ -150,8 +151,8 @@ describe("tasks", () => {
   test("getDueTasks returns only due tasks", () => {
     db.ensureGroup("g1");
     const now = Date.now();
-    db.createTask("g1", "* * * * *", "due", now - 1000, "user1");
-    db.createTask("g1", "* * * * *", "not due", now + 60000, "user1");
+    db.createTask("g1", { cron: "* * * * *" }, "due", now - 1000, "user1");
+    db.createTask("g1", { cron: "* * * * *" }, "not due", now + 60000, "user1");
 
     const due = db.getDueTasks(now);
     expect(due.length).toBe(1);
@@ -162,7 +163,7 @@ describe("tasks", () => {
     db.ensureGroup("g1");
     const id = db.createTask(
       "g1",
-      "* * * * *",
+      { cron: "* * * * *" },
       "task",
       Date.now() - 1000,
       "user1",
@@ -177,7 +178,13 @@ describe("tasks", () => {
 
   test("deleteTask removes task", () => {
     db.ensureGroup("g1");
-    const id = db.createTask("g1", "* * * * *", "task", Date.now(), "user1");
+    const id = db.createTask(
+      "g1",
+      { cron: "* * * * *" },
+      "task",
+      Date.now(),
+      "user1",
+    );
 
     expect(db.deleteTask(id, "g1")).toBe(true);
     expect(db.listTasks("g1").length).toBe(0);
@@ -186,7 +193,13 @@ describe("tasks", () => {
   test("deleteTask fails for wrong group", () => {
     db.ensureGroup("g1");
     db.ensureGroup("g2");
-    const id = db.createTask("g1", "* * * * *", "task", Date.now(), "user1");
+    const id = db.createTask(
+      "g1",
+      { cron: "* * * * *" },
+      "task",
+      Date.now(),
+      "user1",
+    );
 
     expect(db.deleteTask(id, "g2")).toBe(false);
     expect(db.listTasks("g1").length).toBe(1);
@@ -194,7 +207,13 @@ describe("tasks", () => {
 
   test("getTask returns task by id", () => {
     db.ensureGroup("g1");
-    const id = db.createTask("g1", "* * * * *", "task", Date.now(), "user1");
+    const id = db.createTask(
+      "g1",
+      { cron: "* * * * *" },
+      "task",
+      Date.now(),
+      "user1",
+    );
 
     const task = db.getTask(id);
     expect(task).not.toBeNull();
@@ -208,7 +227,13 @@ describe("tasks", () => {
 
   test("updateTaskNextRun updates next_run_at", () => {
     db.ensureGroup("g1");
-    const id = db.createTask("g1", "* * * * *", "task", 1000, "user1");
+    const id = db.createTask(
+      "g1",
+      { cron: "* * * * *" },
+      "task",
+      1000,
+      "user1",
+    );
 
     db.updateTaskNextRun(id, 2000);
     const task = db.getTask(id);
@@ -219,7 +244,7 @@ describe("tasks", () => {
     db.ensureGroup("g1");
     const id = db.createTask(
       "g1",
-      "* * * * *",
+      { cron: "* * * * *" },
       "silent task",
       Date.now(),
       "user1",
@@ -232,7 +257,13 @@ describe("tasks", () => {
 
   test("createTask defaults to not silent", () => {
     db.ensureGroup("g1");
-    const id = db.createTask("g1", "* * * * *", "task", Date.now(), "user1");
+    const id = db.createTask(
+      "g1",
+      { cron: "* * * * *" },
+      "task",
+      Date.now(),
+      "user1",
+    );
 
     const task = db.getTask(id);
     expect(task?.silent).toBe(0);
@@ -240,8 +271,22 @@ describe("tasks", () => {
 
   test("listTasks includes silent field", () => {
     db.ensureGroup("g1");
-    db.createTask("g1", "* * * * *", "normal", Date.now(), "user1", false);
-    db.createTask("g1", "* * * * *", "silent", Date.now(), "user1", true);
+    db.createTask(
+      "g1",
+      { cron: "* * * * *" },
+      "normal",
+      Date.now(),
+      "user1",
+      false,
+    );
+    db.createTask(
+      "g1",
+      { cron: "* * * * *" },
+      "silent",
+      Date.now(),
+      "user1",
+      true,
+    );
 
     const tasks = db.listTasks("g1");
     expect(tasks.length).toBe(2);
@@ -252,7 +297,14 @@ describe("tasks", () => {
   test("getDueTasks includes silent field", () => {
     db.ensureGroup("g1");
     const now = Date.now();
-    db.createTask("g1", "* * * * *", "silent due", now - 1000, "user1", true);
+    db.createTask(
+      "g1",
+      { cron: "* * * * *" },
+      "silent due",
+      now - 1000,
+      "user1",
+      true,
+    );
 
     const due = db.getDueTasks(now);
     expect(due.length).toBe(1);
@@ -372,8 +424,8 @@ describe("tasks — listTasks without groupId", () => {
   test("returns all tasks across groups", () => {
     db.ensureGroup("g1");
     db.ensureGroup("g2");
-    db.createTask("g1", "* * * * *", "task1", Date.now(), "user1");
-    db.createTask("g2", "* * * * *", "task2", Date.now(), "user2");
+    db.createTask("g1", { cron: "* * * * *" }, "task1", Date.now(), "user1");
+    db.createTask("g2", { cron: "* * * * *" }, "task2", Date.now(), "user2");
 
     const all = db.listTasks();
     expect(all.length).toBe(2);

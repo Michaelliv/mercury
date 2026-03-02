@@ -47,12 +47,20 @@ mercury-ctl whoami                    # Show caller, group, role, permissions
 ### Scheduled Tasks
 ```bash
 mercury-ctl tasks list                # List all tasks for this group
+
+# Recurring tasks (cron)
 mercury-ctl tasks create --cron "0 9 * * *" --prompt "Good morning!" [--silent]
+
+# One-shot tasks (at) — auto-delete after execution
+mercury-ctl tasks create --at "2026-03-02T14:00:00Z" --prompt "Reminder!" [--silent]
+
 mercury-ctl tasks run <id>            # Trigger task immediately
 mercury-ctl tasks pause <id>          # Pause a task
 mercury-ctl tasks resume <id>         # Resume a paused task
 mercury-ctl tasks delete <id>         # Delete a task
 ```
+
+**Note:** Use `--cron` for recurring tasks or `--at` for one-shot tasks (ISO 8601, must be in the future).
 
 ### Group Configuration
 ```bash

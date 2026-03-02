@@ -1,6 +1,38 @@
 # Scheduler
 
-Mercury includes a task scheduler for recurring automated prompts. Tasks run on cron schedules and execute in the context of a specific group.
+Mercury includes a task scheduler for automated prompts. Tasks can run on **cron schedules** (recurring) or **at schedules** (one-shot).
+
+## Task Types
+
+### Cron Tasks (Recurring)
+
+Run on a cron schedule, repeating indefinitely:
+
+```bash
+# Daily standup at 9am
+mercury-ctl tasks create --cron "0 9 * * *" --prompt "Good morning! What's on the agenda today?"
+```
+
+### At Tasks (One-Shot)
+
+Run once at a specific time, then auto-delete:
+
+```bash
+# Reminder in 2 hours
+mercury-ctl tasks create --at "2026-03-02T16:00:00Z" --prompt "Time for the team meeting!"
+
+# Schedule a future check
+mercury-ctl tasks create --at "2026-03-15T09:00:00Z" --prompt "Follow up on the Q1 report"
+```
+
+At-tasks are useful for:
+- **Reminders** — one-time notifications
+- **Delayed actions** — schedule something for later
+- **Follow-ups** — check back on something at a specific time
+
+The `at` timestamp must be:
+- ISO 8601 format (e.g., `2026-03-02T14:00:00Z`)
+- In the future
 
 ## Silent Tasks
 
@@ -13,8 +45,11 @@ Tasks can be marked as **silent** to execute without posting results to the chat
 The task executes normally but no message is sent to the group.
 
 ```bash
-# Create a silent task
+# Create a silent cron task
 mercury-ctl tasks create --cron "0 3 * * *" --prompt "Run nightly maintenance" --silent
+
+# Create a silent at-task
+mercury-ctl tasks create --at "2026-03-02T03:00:00Z" --prompt "One-time cleanup" --silent
 ```
 
 ## How It Works
@@ -27,20 +62,34 @@ TaskScheduler.start()
         ├─► Query DB for due tasks (active=1, next_run_at <= now)
         │
         ├─► For each due task:
-        │     ├─► Compute next run time from cron expression
-        │     ├─► Update next_run_at in DB
-        │     └─► Execute handler (sends prompt to group)
+        │     │
+        │     ├─► [Cron task]
+        │     │     ├─► Compute next run time from cron expression
+        │     │     ├─► Update next_run_at in DB
+        │     │     └─► Execute handler
+        │     │
+        │     └─► [At task]
+        │           ├─► Execute handler
+        │           └─► Delete task from DB
         │
         └─► Schedule next poll
 ```
 
 Tasks are processed sequentially within a poll cycle. Each task runs as if the `createdBy` user sent the prompt.
 
+**At-task lifecycle:**
+1. Created with a future timestamp
+2. Waits until scheduled time
+3. Executes once
+4. Auto-deletes (regardless of success/failure)
+
 ## Creating Tasks
 
 The agent creates tasks via `mercury-ctl`:
 
 ```bash
+# === Cron tasks (recurring) ===
+
 # Daily standup at 9am
 mercury-ctl tasks create --cron "0 9 * * *" --prompt "Good morning! What's on the agenda today?"
 
@@ -52,7 +101,17 @@ mercury-ctl tasks create --cron "0 */6 * * *" --prompt "Check for any pending it
 
 # Silent nightly cleanup (no chat output)
 mercury-ctl tasks create --cron "0 3 * * *" --prompt "Clean up old temp files" --silent
+
+# === At tasks (one-shot) ===
+
+# Reminder at a specific time
+mercury-ctl tasks create --at "2026-03-02T14:00:00Z" --prompt "Meeting starts in 15 minutes!"
+
+# Delayed follow-up
+mercury-ctl tasks create --at "2026-03-10T09:00:00Z" --prompt "Check if the deployment completed successfully"
 ```
+
+**Note:** You must specify either `--cron` or `--at`, not both.
 
 ## Managing Tasks
 
@@ -65,6 +124,9 @@ mercury-ctl tasks pause <id>
 
 # Resume a paused task
 mercury-ctl tasks resume <id>
+
+# Manually trigger a task now
+mercury-ctl tasks run <id>
 
 # Delete a task permanently
 mercury-ctl tasks delete <id>
@@ -116,7 +178,8 @@ Tasks are stored in SQLite:
 CREATE TABLE tasks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   group_id TEXT NOT NULL,
-  cron TEXT NOT NULL,
+  cron TEXT,                          -- Cron expression (null for at-tasks)
+  at TEXT,                            -- ISO 8601 timestamp (null for cron-tasks)
   prompt TEXT NOT NULL,
   active INTEGER NOT NULL DEFAULT 1,
   silent INTEGER NOT NULL DEFAULT 0,
@@ -131,6 +194,8 @@ CREATE INDEX idx_tasks_next ON tasks(active, next_run_at);
 
 | Column | Description |
 |--------|-------------|
+| `cron` | Cron expression for recurring tasks (null for at-tasks) |
+| `at` | ISO 8601 timestamp for one-shot tasks (null for cron-tasks) |
 | `silent` | If 1, task runs but doesn't post results to chat |
 
 ## Permissions
@@ -180,7 +245,7 @@ const scheduler = new TaskScheduler(db, pollIntervalMs);
 
 scheduler.start(handler);    // Begin polling
 scheduler.stop();            // Stop polling
-scheduler.computeNextRun(cron, from);  // Get next run time
+scheduler.computeNextRun(cron, from);  // Get next run time for cron tasks
 ```
 
 ### Handler Signature
@@ -198,12 +263,18 @@ type TaskHandler = (task: {
 ### Database Methods
 
 ```typescript
-db.createTask(groupId, cron, prompt, nextRunAt, createdBy, silent);  // Returns task ID
-db.listTasks(groupId?);      // List tasks (optionally filter by group)
-db.getDueTasks(now);         // Get tasks ready to run
-db.getTask(id);              // Get single task
+// Create a cron task
+db.createTask(groupId, { cron: "0 9 * * *" }, prompt, nextRunAt, createdBy, silent);
+
+// Create an at-task
+db.createTask(groupId, { at: "2026-03-02T14:00:00Z" }, prompt, nextRunAt, createdBy, silent);
+
+db.listTasks(groupId?);       // List tasks (optionally filter by group)
+db.getDueTasks(now);          // Get tasks ready to run
+db.getTask(id);               // Get single task
 db.setTaskActive(id, active); // Pause/resume
-db.deleteTask(id, groupId);  // Delete task
+db.deleteTask(id, groupId);   // Delete task (with group check)
+db.deleteTaskById(id);        // Delete task (no group check, for scheduler)
 db.updateTaskNextRun(id, nextRunAt);  // Update next execution time
 ```
 
@@ -212,5 +283,6 @@ db.updateTaskNextRun(id, nextRunAt);  // Update next execution time
 If a task handler fails:
 - Error is logged
 - Task is not retried in the same cycle
-- `next_run_at` is already updated, so it will run again at the next scheduled time
+- **Cron tasks:** `next_run_at` is already updated, so it will run again at the next scheduled time
+- **At tasks:** Still deleted after execution (one-shot behavior preserved)
 - Other tasks in the cycle continue to execute

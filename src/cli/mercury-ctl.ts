@@ -52,6 +52,7 @@ Usage:
   mercury-ctl whoami
   mercury-ctl tasks list
   mercury-ctl tasks create --cron <expr> --prompt <text> [--silent]
+  mercury-ctl tasks create --at <ISO8601> --prompt <text> [--silent]
   mercury-ctl tasks pause <id>
   mercury-ctl tasks resume <id>
   mercury-ctl tasks run <id>
@@ -109,13 +110,13 @@ async function main() {
           break;
         case "create": {
           const cron = parseFlag(args, "--cron");
+          const at = parseFlag(args, "--at");
           const prompt = parseFlag(args, "--prompt");
           const silent = args.includes("--silent");
-          if (!cron || !prompt)
-            fatal(
-              "Usage: tasks create --cron <expr> --prompt <text> [--silent]",
-            );
-          print(await api("POST", "/api/tasks", { cron, prompt, silent }));
+          if (!prompt) fatal("Missing --prompt");
+          if (!cron && !at) fatal("Must specify --cron or --at");
+          if (cron && at) fatal("Cannot specify both --cron and --at");
+          print(await api("POST", "/api/tasks", { cron, at, prompt, silent }));
           break;
         }
         case "pause": {

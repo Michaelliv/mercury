@@ -29,7 +29,7 @@ src/
 │   ├── runtime.ts          # Main orchestrator
 │   ├── router.ts           # Message routing
 │   ├── group-queue.ts      # Per-group concurrency
-│   ├── task-scheduler.ts   # Cron execution
+│   ├── task-scheduler.ts   # Task scheduling (cron + at)
 │   ├── permissions.ts      # RBAC
 │   ├── trigger.ts          # Pattern matching
 │   ├── rate-limiter.ts     # Rate limiting
@@ -74,7 +74,7 @@ resources/
 Tables in `state.db`:
 - `groups` — Chat groups/channels
 - `messages` — Message history (for ambient context)
-- `tasks` — Scheduled cron tasks
+- `tasks` — Scheduled tasks (cron + one-shot at)
 - `roles` — User role assignments
 - `permissions` — Role permission sets
 - `config` — Per-group config overrides
@@ -105,7 +105,7 @@ Auth: `X-Mercury-Caller` + `X-Mercury-Group` headers.
 |-----|-------|
 | [ingress.md](docs/ingress.md) | Adapter message flow |
 | [memory.md](docs/memory.md) | Obsidian vault system |
-| [scheduler.md](docs/scheduler.md) | Cron tasks |
+| [scheduler.md](docs/scheduler.md) | Task scheduling (cron + at) |
 | [permissions.md](docs/permissions.md) | RBAC system |
 | [kb-distillation.md](docs/kb-distillation.md) | Knowledge extraction |
 | [container-lifecycle.md](docs/container-lifecycle.md) | Docker management |

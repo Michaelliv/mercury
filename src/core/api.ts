@@ -23,6 +23,7 @@ interface ApiContext {
 
 interface TaskCreateBody {
   cron?: string;
+  at?: string; // ISO 8601 timestamp for one-shot tasks
   prompt?: string;
   silent?: boolean;
 }
@@ -125,32 +126,52 @@ export function handleApiRequest(
     return (async () => {
       const body = await parseBody<TaskCreateBody>(request);
       if (!body) return error("Invalid JSON body", 400);
-      if (!body.cron || !body.prompt)
-        return error("Missing cron or prompt", 400);
-      try {
-        const interval = CronExpressionParser.parse(body.cron, {
-          currentDate: new Date(),
-        });
-        const nextRunAt = interval.next().getTime();
-        const silent = body.silent ?? false;
-        const id = ctx.db.createTask(
-          groupId,
-          body.cron,
-          body.prompt,
-          nextRunAt,
-          callerId,
-          silent,
-        );
-        return json({
-          id,
-          cron: body.cron,
-          prompt: body.prompt,
-          silent,
-          nextRunAt,
-        });
-      } catch {
-        return error("Invalid cron expression", 400);
+      if (!body.prompt) return error("Missing prompt", 400);
+      if (!body.cron && !body.at) return error("Missing cron or at", 400);
+      if (body.cron && body.at)
+        return error("Cannot specify both cron and at", 400);
+
+      const silent = body.silent ?? false;
+      let nextRunAt: number;
+      let schedule: { cron: string } | { at: string };
+
+      if (body.cron) {
+        try {
+          const interval = CronExpressionParser.parse(body.cron, {
+            currentDate: new Date(),
+          });
+          nextRunAt = interval.next().getTime();
+          schedule = { cron: body.cron };
+        } catch {
+          return error("Invalid cron expression", 400);
+        }
+      } else {
+        const atStr = body.at as string; // Safe: validated above (!body.cron && !body.at)
+        const atTime = new Date(atStr).getTime();
+        if (Number.isNaN(atTime)) return error("Invalid at timestamp", 400);
+        if (atTime <= Date.now())
+          return error("at timestamp must be in the future", 400);
+        nextRunAt = atTime;
+        schedule = { at: atStr };
       }
+
+      const id = ctx.db.createTask(
+        groupId,
+        schedule,
+        body.prompt,
+        nextRunAt,
+        callerId,
+        silent,
+      );
+
+      return json({
+        id,
+        cron: body.cron ?? null,
+        at: body.at ?? null,
+        prompt: body.prompt,
+        silent,
+        nextRunAt,
+      });
     })();
   }
 

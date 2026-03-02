@@ -27,8 +27,13 @@ export class TaskScheduler {
       try {
         const due = this.db.getDueTasks(Date.now());
         for (const task of due) {
-          const next = this.computeNextRun(task.cron);
-          this.db.updateTaskNextRun(task.id, next);
+          // For cron tasks, update next run before execution
+          // For at-tasks, we'll delete after execution
+          if (task.cron) {
+            const next = this.computeNextRun(task.cron);
+            this.db.updateTaskNextRun(task.id, next);
+          }
+
           try {
             await handler({
               id: task.id,
@@ -42,6 +47,15 @@ export class TaskScheduler {
               taskId: task.id,
               groupId: task.groupId,
               error: error instanceof Error ? error.message : String(error),
+            });
+          }
+
+          // For at-tasks, delete after execution (regardless of success/failure)
+          if (task.at) {
+            this.db.deleteTaskById(task.id);
+            logger.info("One-shot task completed and deleted", {
+              taskId: task.id,
+              groupId: task.groupId,
             });
           }
         }

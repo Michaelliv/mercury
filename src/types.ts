@@ -37,7 +37,8 @@ export interface StoredMessage {
 export interface ScheduledTask {
   id: number;
   groupId: string;
-  cron: string;
+  cron: string | null; // null for at-tasks
+  at: string | null; // ISO 8601 timestamp, null for cron-tasks
   prompt: string;
   active: number;
   silent: number;

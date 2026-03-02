@@ -60,7 +60,8 @@ export class Db {
       CREATE TABLE IF NOT EXISTS tasks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         group_id TEXT NOT NULL,
-        cron TEXT NOT NULL,
+        cron TEXT,
+        at TEXT,
         prompt TEXT NOT NULL,
         active INTEGER NOT NULL DEFAULT 1,
         silent INTEGER NOT NULL DEFAULT 0,
@@ -106,6 +107,13 @@ export class Db {
 
     // Migration: add silent column to tasks table
     this.addColumnIfNotExists("tasks", "silent", "INTEGER NOT NULL DEFAULT 0");
+
+    // Migration: add at column to tasks table for one-shot tasks
+    this.addColumnIfNotExists("tasks", "at", "TEXT");
+
+    // Note: For existing databases where cron was NOT NULL, SQLite allows NULL values
+    // in columns declared NOT NULL when inserted via ALTER TABLE or when the column
+    // constraint was removed from CREATE TABLE. New databases get the correct schema.
   }
 
   private addColumnIfNotExists(
@@ -299,20 +307,23 @@ export class Db {
 
   createTask(
     groupId: string,
-    cron: string,
+    schedule: { cron: string } | { at: string },
     prompt: string,
     nextRunAt: number,
     createdBy: string,
     silent = false,
   ): number {
     const now = Date.now();
+    const cron = "cron" in schedule ? schedule.cron : null;
+    const at = "at" in schedule ? schedule.at : null;
     this.db
       .query(
-        "INSERT INTO tasks(group_id, cron, prompt, active, silent, next_run_at, created_by, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)",
+        "INSERT INTO tasks(group_id, cron, at, prompt, active, silent, next_run_at, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?)",
       )
       .run(
         groupId,
         cron,
+        at,
         prompt,
         silent ? 1 : 0,
         nextRunAt,
@@ -332,7 +343,7 @@ export class Db {
     if (groupId) {
       return this.db
         .query(
-          `SELECT id, group_id as groupId, cron, prompt, active, silent, next_run_at as nextRunAt, created_by as createdBy, created_at as createdAt, updated_at as updatedAt
+          `SELECT id, group_id as groupId, cron, at, prompt, active, silent, next_run_at as nextRunAt, created_by as createdBy, created_at as createdAt, updated_at as updatedAt
            FROM tasks WHERE group_id = ? ORDER BY id ASC`,
         )
         .all(groupId) as ScheduledTask[];
@@ -340,7 +351,7 @@ export class Db {
 
     return this.db
       .query(
-        `SELECT id, group_id as groupId, cron, prompt, active, silent, next_run_at as nextRunAt, created_by as createdBy, created_at as createdAt, updated_at as updatedAt
+        `SELECT id, group_id as groupId, cron, at, prompt, active, silent, next_run_at as nextRunAt, created_by as createdBy, created_at as createdAt, updated_at as updatedAt
          FROM tasks ORDER BY id ASC`,
       )
       .all() as ScheduledTask[];
@@ -349,7 +360,7 @@ export class Db {
   getDueTasks(now = Date.now()): ScheduledTask[] {
     return this.db
       .query(
-        `SELECT id, group_id as groupId, cron, prompt, active, silent, next_run_at as nextRunAt, created_by as createdBy, created_at as createdAt, updated_at as updatedAt
+        `SELECT id, group_id as groupId, cron, at, prompt, active, silent, next_run_at as nextRunAt, created_by as createdBy, created_at as createdAt, updated_at as updatedAt
          FROM tasks
          WHERE active = 1 AND next_run_at <= ?
          ORDER BY next_run_at ASC`,
@@ -376,10 +387,15 @@ export class Db {
     return result.changes > 0;
   }
 
+  deleteTaskById(id: number): boolean {
+    const result = this.db.query("DELETE FROM tasks WHERE id = ?").run(id);
+    return result.changes > 0;
+  }
+
   getTask(id: number): ScheduledTask | null {
     return this.db
       .query(
-        `SELECT id, group_id as groupId, cron, prompt, active, silent, next_run_at as nextRunAt, created_by as createdBy, created_at as createdAt, updated_at as updatedAt
+        `SELECT id, group_id as groupId, cron, at, prompt, active, silent, next_run_at as nextRunAt, created_by as createdBy, created_at as createdAt, updated_at as updatedAt
          FROM tasks WHERE id = ?`,
       )
       .get(id) as ScheduledTask | null;
