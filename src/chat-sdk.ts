@@ -136,9 +136,13 @@ async function main() {
     // Quick trigger check before starting typing indicator
     const text = message.text.trim();
 
-    // Extract attachments from message metadata (populated by WhatsApp adapter)
-    const attachments =
-      (message.metadata as { attachments?: unknown })?.attachments ?? [];
+    // Extract attachments and reply flag from message metadata (populated by adapters)
+    const metadata = message.metadata as {
+      attachments?: unknown;
+      isReplyToBot?: boolean;
+    };
+    const attachments = metadata?.attachments ?? [];
+    const isReplyToBot = metadata?.isReplyToBot ?? false;
 
     // Allow messages with only attachments (no text)
     if (!text && (!Array.isArray(attachments) || attachments.length === 0))
@@ -154,8 +158,9 @@ async function main() {
     });
     const triggerResult = matchTrigger(text, triggerConfig, isDM);
 
-    // Only start typing if trigger matched (or DM)
-    if (triggerResult.matched) {
+    // Start typing if trigger matched, DM, or reply to bot
+    const shouldStartTyping = triggerResult.matched || (isReplyToBot && !isDM);
+    if (shouldStartTyping) {
       if (isNew) await thread.subscribe();
       await thread.startTyping();
     }
@@ -166,6 +171,7 @@ async function main() {
       callerId,
       authorName: message.author.userName,
       isDM,
+      isReplyToBot,
       source: "chat-sdk",
       attachments: Array.isArray(attachments) ? attachments : [],
     });

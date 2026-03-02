@@ -130,6 +130,19 @@ All adapters share the same trigger engine. A pre-route check runs before `handl
 
 DMs always match regardless of mode.
 
+### Reply-to-Bot
+
+Replying to a bot message triggers a response — no explicit `@mention` needed:
+
+```
+User: @Mercury what's the weather?
+Bot: It's 72°F and sunny.
+User: [replies] what about tomorrow?  ← triggers response
+Bot: Tomorrow will be 75°F.
+```
+
+This works on WhatsApp (quoted messages) and Discord (reply threads). Slack uses a different threading model where users typically `@mention` in threads, so reply detection is not implemented there.
+
 **Configuration:**
 
 ```bash

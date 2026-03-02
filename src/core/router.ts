@@ -24,6 +24,7 @@ export function routeInput(input: {
   groupId: string;
   callerId: string;
   isDM: boolean;
+  isReplyToBot?: boolean;
   db: Db;
   config: AppConfig;
 }): RouteResult {
@@ -57,12 +58,16 @@ export function routeInput(input: {
     match: input.config.triggerMatch,
   });
 
-  // Match trigger
+  // Match trigger OR reply-to-bot
   const result = matchTrigger(text, triggerConfig, input.isDM);
-  if (!result.matched) return { type: "ignore" };
+  const isReplyTrigger = input.isReplyToBot && !input.isDM;
+  if (!result.matched && !isReplyTrigger) return { type: "ignore" };
+
+  // Use stripped prompt if trigger matched, otherwise full text for replies
+  const prompt = result.matched ? result.prompt : text;
 
   // Check for commands after trigger (e.g. "@Pi stop", "Pi compact")
-  const cmdWord = result.prompt.toLowerCase().trim();
+  const cmdWord = prompt.toLowerCase().trim();
   if (cmdWord in CHAT_COMMANDS) {
     return gateCommand(input.db, input.groupId, cmdWord, role, input.callerId);
   }
@@ -77,7 +82,7 @@ export function routeInput(input: {
 
   return {
     type: "assistant",
-    prompt: result.prompt,
+    prompt,
     callerId: input.callerId,
     role,
   };

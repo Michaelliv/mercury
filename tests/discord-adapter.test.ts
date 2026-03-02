@@ -276,6 +276,50 @@ describe("createDiscordMessageHandler", () => {
     // Group ID is now the full thread ID (including guild and sub-thread)
     expect(call.groupId).toBe("discord:111222333:444555666:999000111");
   });
+
+  test("passes isReplyToBot from metadata to handleRawInput", async () => {
+    const { handler, thread, core } = setup();
+    core.handleRawInput = mock(async () => ({
+      type: "assistant" as const,
+      prompt: "what about tomorrow?",
+      callerId: "discord:U123",
+      role: "member",
+      reply: "Tomorrow looks good!",
+    }));
+
+    // Message is a reply to bot (no trigger pattern)
+    const msg = fakeMessage({
+      text: "what about tomorrow?",
+      isReplyToBot: true,
+    });
+    await handler(thread, msg, true);
+
+    const call = (core.handleRawInput as ReturnType<typeof mock>).mock
+      .calls[0][0];
+    expect(call.isReplyToBot).toBe(true);
+    expect(call.rawText).toBe("what about tomorrow?");
+  });
+
+  test("starts typing for reply-to-bot without explicit trigger", async () => {
+    const { handler, thread, core } = setup();
+    core.handleRawInput = mock(async () => ({
+      type: "assistant" as const,
+      prompt: "followup question",
+      callerId: "discord:U123",
+      role: "member",
+      reply: "Here's your answer!",
+    }));
+
+    // Reply to bot without trigger
+    const msg = fakeMessage({
+      text: "followup question",
+      isReplyToBot: true,
+    });
+    await handler(thread, msg, true);
+
+    expect(thread.startTyping).toHaveBeenCalled();
+    expect(thread.post).toHaveBeenCalledWith("Here's your answer!");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -316,6 +360,7 @@ function fakeMessage(opts: {
   userId?: string;
   userName?: string;
   isMe?: boolean;
+  isReplyToBot?: boolean;
 }): unknown {
   return {
     text: opts.text ?? "",
@@ -326,7 +371,11 @@ function fakeMessage(opts: {
       isBot: false,
       isMe: opts.isMe ?? false,
     },
-    metadata: { dateSent: new Date(), edited: false },
+    metadata: {
+      dateSent: new Date(),
+      edited: false,
+      isReplyToBot: opts.isReplyToBot ?? false,
+    },
     attachments: [],
   };
 }
