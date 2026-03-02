@@ -27,7 +27,11 @@ Edit `.env`:
 
 ```bash
 ANTHROPIC_API_KEY=sk-ant-...
+
+# Enable adapters
 MERCURY_ENABLE_WHATSAPP=true
+MERCURY_ENABLE_DISCORD=true
+DISCORD_BOT_TOKEN=your-bot-token
 ```
 
 Run:
@@ -151,8 +155,9 @@ mercury-ctl compact
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MERCURY_MODEL_PROVIDER` | `anthropic` | Provider |
-| `MERCURY_MODEL` | `claude-sonnet-4-20250514` | Model |
+| `MERCURY_MODEL` | `claude-opus-4-6` | Model |
 | `ANTHROPIC_API_KEY` | — | API key |
+| `ANTHROPIC_OAUTH_TOKEN` | — | OAuth token (alternative to API key) |
 
 **Adapters:**
 
@@ -160,10 +165,23 @@ mercury-ctl compact
 |----------|-------------|
 | `MERCURY_ENABLE_WHATSAPP` | Enable WhatsApp |
 | `MERCURY_WHATSAPP_AUTH_DIR` | Auth storage path |
+| `MERCURY_ENABLE_DISCORD` | Enable Discord |
+| `DISCORD_BOT_TOKEN` | Discord bot token |
 | `SLACK_BOT_TOKEN` | Slack bot token |
 | `SLACK_SIGNING_SECRET` | Slack signing secret |
-| `DISCORD_BOT_TOKEN` | Discord bot token |
-| `DISCORD_PUBLIC_KEY` | Discord public key |
+
+**Container:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MERCURY_AGENT_CONTAINER_IMAGE` | `mercury-agent:latest` | Container image |
+| `MERCURY_CONTAINER_TIMEOUT_MS` | `300000` | Container timeout (5 min) |
+
+**KB Distillation:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MERCURY_KB_DISTILL_INTERVAL_MS` | `0` (disabled) | Distillation interval |
 
 **Triggers:**
 

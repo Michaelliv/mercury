@@ -138,7 +138,7 @@ function runPi(payload: Payload): Promise<string> {
       "--provider",
       process.env.MERCURY_MODEL_PROVIDER || "anthropic",
       "--model",
-      process.env.MERCURY_MODEL || "claude-sonnet-4-20250514",
+      process.env.MERCURY_MODEL || "claude-opus-4-6",
       "--append-system-prompt",
       buildSystemPrompt(),
       buildPrompt(payload),

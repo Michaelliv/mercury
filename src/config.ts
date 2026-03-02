@@ -10,7 +10,7 @@ const schema = z.object({
 
   // ─── AI Model ───────────────────────────────────────────────────────
   modelProvider: z.string().default("anthropic"),
-  model: z.string().default("claude-sonnet-4-20250514"),
+  model: z.string().default("claude-opus-4-6"),
 
   // ─── Trigger Behavior ───────────────────────────────────────────────
   triggerPatterns: z.string().default("@Pi,Pi"),
