@@ -33,7 +33,10 @@ export async function getApiKeyFromPiAuthFile(options: {
   provider: string;
   authPath: string;
 }): Promise<string | undefined> {
-  if (process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_OAUTH_TOKEN) {
+  if (
+    process.env.MERCURY_ANTHROPIC_API_KEY ||
+    process.env.MERCURY_ANTHROPIC_OAUTH_TOKEN
+  ) {
     return undefined;
   }
 

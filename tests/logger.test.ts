@@ -33,8 +33,8 @@ describe("logger", () => {
 
   test("text format outputs structured text", async () => {
     // Set up env before import
-    process.env.MERCURY_LOG_LEVEL = "info";
-    process.env.MERCURY_LOG_FORMAT = "text";
+    process.env.LOG_LEVEL = "info";
+    process.env.LOG_FORMAT = "text";
 
     // Clear module cache and re-import
     delete require.cache[require.resolve("../src/logger.js")];
@@ -57,8 +57,8 @@ describe("logger", () => {
   });
 
   test("json format outputs valid JSON", async () => {
-    process.env.MERCURY_LOG_LEVEL = "info";
-    process.env.MERCURY_LOG_FORMAT = "json";
+    process.env.LOG_LEVEL = "info";
+    process.env.LOG_FORMAT = "json";
 
     delete require.cache[require.resolve("../src/logger.js")];
     const { logger, configureLogger } = await import("../src/logger.js");
@@ -77,7 +77,7 @@ describe("logger", () => {
   });
 
   test("child logger inherits and extends context", async () => {
-    process.env.MERCURY_LOG_FORMAT = "json";
+    process.env.LOG_FORMAT = "json";
 
     delete require.cache[require.resolve("../src/logger.js")];
     const { logger, configureLogger } = await import("../src/logger.js");
@@ -96,7 +96,7 @@ describe("logger", () => {
   });
 
   test("child logger can be nested", async () => {
-    process.env.MERCURY_LOG_FORMAT = "json";
+    process.env.LOG_FORMAT = "json";
 
     delete require.cache[require.resolve("../src/logger.js")];
     const { logger, configureLogger } = await import("../src/logger.js");
@@ -148,7 +148,7 @@ describe("logger", () => {
   });
 
   test("error objects are handled in JSON format", async () => {
-    process.env.MERCURY_LOG_FORMAT = "json";
+    process.env.LOG_FORMAT = "json";
 
     delete require.cache[require.resolve("../src/logger.js")];
     const { logger, configureLogger } = await import("../src/logger.js");
@@ -166,7 +166,7 @@ describe("logger", () => {
   });
 
   test("error objects are handled in text format", async () => {
-    process.env.MERCURY_LOG_FORMAT = "text";
+    process.env.LOG_FORMAT = "text";
 
     delete require.cache[require.resolve("../src/logger.js")];
     const { logger, configureLogger } = await import("../src/logger.js");
@@ -217,7 +217,7 @@ describe("logger", () => {
   });
 
   test("container lifecycle log format (JSON)", async () => {
-    process.env.MERCURY_LOG_FORMAT = "json";
+    process.env.LOG_FORMAT = "json";
 
     delete require.cache[require.resolve("../src/logger.js")];
     const { logger, configureLogger } = await import("../src/logger.js");

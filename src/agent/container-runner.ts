@@ -150,42 +150,45 @@ export class AgentContainerRunner {
       authPath: this.config.authPath ?? path.join(globalDir, "auth.json"),
     });
 
-    const authEnv: Record<string, string | undefined> = {
-      ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-      ANTHROPIC_OAUTH_TOKEN: process.env.ANTHROPIC_OAUTH_TOKEN,
-      OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-    };
+    // Pass all MERCURY_* vars to container with prefix stripped
+    // e.g. MERCURY_ANTHROPIC_API_KEY -> ANTHROPIC_API_KEY
+    const passthroughEnvPairs = Object.entries(process.env)
+      .filter(
+        (entry): entry is [string, string] =>
+          entry[0].startsWith("MERCURY_") && entry[1] !== undefined,
+      )
+      .map(([key, value]) => ({
+        key: key.replace("MERCURY_", ""),
+        value: value,
+      }));
 
+    // Check for pi auth file fallback for Anthropic
+    const hasAnthropicKey = passthroughEnvPairs.some(
+      (p) => p.key === "ANTHROPIC_API_KEY" || p.key === "ANTHROPIC_OAUTH_TOKEN",
+    );
     if (
-      !authEnv.ANTHROPIC_API_KEY &&
-      !authEnv.ANTHROPIC_OAUTH_TOKEN &&
+      !hasAnthropicKey &&
       this.config.modelProvider === "anthropic" &&
       authFromPi
     ) {
-      authEnv.ANTHROPIC_OAUTH_TOKEN = authFromPi;
+      passthroughEnvPairs.push({
+        key: "ANTHROPIC_OAUTH_TOKEN",
+        value: authFromPi,
+      });
     }
 
     const envPairs = [
-      {
-        key: "MERCURY_MODEL_PROVIDER",
-        value: process.env.MERCURY_MODEL_PROVIDER,
-      },
-      { key: "MERCURY_MODEL", value: process.env.MERCURY_MODEL },
-      { key: "MERCURY_LOG_LEVEL", value: process.env.MERCURY_LOG_LEVEL }, // used by pi CLI inside container
-      { key: "ANTHROPIC_API_KEY", value: authEnv.ANTHROPIC_API_KEY },
-      { key: "ANTHROPIC_OAUTH_TOKEN", value: authEnv.ANTHROPIC_OAUTH_TOKEN },
-      { key: "OPENAI_API_KEY", value: authEnv.OPENAI_API_KEY },
+      // Internal vars (set by code, not from env)
       { key: "HOME", value: "/home/node" },
       { key: "PI_CODING_AGENT_DIR", value: "/home/node/.pi/agent" },
-      { key: "MERCURY_CALLER_ID", value: input.callerId },
-      { key: "MERCURY_GROUP_ID", value: input.groupId },
+      { key: "CALLER_ID", value: input.callerId },
+      { key: "GROUP_ID", value: input.groupId },
       {
-        key: "MERCURY_API_URL",
+        key: "API_URL",
         value: `http://host.docker.internal:${this.config.chatSdkPort}`,
       },
-      // Stage - React sandbox for AI agents
-      { key: "CONVEX_URL", value: process.env.CONVEX_URL },
-      { key: "STAGE_URL", value: process.env.STAGE_URL },
+      // Passthrough vars (MERCURY_* with prefix stripped)
+      ...passthroughEnvPairs,
     ].filter((x): x is { key: string; value: string } => Boolean(x.value));
 
     const containerName = this.generateContainerName();

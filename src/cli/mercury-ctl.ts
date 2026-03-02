@@ -1,17 +1,17 @@
 #!/usr/bin/env bun
 
-const API_URL = process.env.MERCURY_API_URL;
-const CALLER_ID = process.env.MERCURY_CALLER_ID;
-const GROUP_ID = process.env.MERCURY_GROUP_ID;
+const API_URL = process.env.API_URL;
+const CALLER_ID = process.env.CALLER_ID;
+const GROUP_ID = process.env.GROUP_ID;
 
 function fatal(msg: string): never {
   process.stderr.write(`error: ${msg}\n`);
   process.exit(1);
 }
 
-if (!API_URL) fatal("MERCURY_API_URL not set");
-if (!CALLER_ID) fatal("MERCURY_CALLER_ID not set");
-if (!GROUP_ID) fatal("MERCURY_GROUP_ID not set");
+if (!API_URL) fatal("API_URL not set");
+if (!CALLER_ID) fatal("CALLER_ID not set");
+if (!GROUP_ID) fatal("GROUP_ID not set");
 
 const headers: Record<string, string> = {
   "x-mercury-caller": CALLER_ID,
@@ -69,9 +69,9 @@ Usage:
   mercury-ctl compact
 
 Environment:
-  MERCURY_API_URL       Host API base URL
-  MERCURY_CALLER_ID     Platform user ID of the caller
-  MERCURY_GROUP_ID      Current group ID
+  API_URL       Host API base URL
+  CALLER_ID     Platform user ID of the caller
+  GROUP_ID      Current group ID
 `);
   process.exit(1);
 }

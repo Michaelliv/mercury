@@ -94,7 +94,6 @@ export class DiscordNativeAdapter
 
   private chat?: ChatInstance;
   private client: Client;
-  private connected = false;
   private readonly botToken: string;
 
   constructor(options: DiscordNativeAdapterOptions) {
@@ -122,7 +121,6 @@ export class DiscordNativeAdapter
     logger.info("Discord native adapter initializing");
 
     this.client.on(Events.ClientReady, () => {
-      this.connected = true;
       logger.info("Discord native adapter connected", {
         username: this.client.user?.username,
         id: this.client.user?.id,
@@ -386,7 +384,6 @@ export class DiscordNativeAdapter
   }
 
   async shutdown(): Promise<void> {
-    this.connected = false;
     await this.client.destroy();
     logger.info("Discord native adapter disconnected");
   }

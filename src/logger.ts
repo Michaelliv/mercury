@@ -30,8 +30,13 @@ function parseFormat(value: string | undefined): LogFormat {
 }
 
 // Configuration - read from env at module load
-let currentLevel = parseLevel(process.env.MERCURY_LOG_LEVEL);
-let currentFormat = parseFormat(process.env.MERCURY_LOG_FORMAT);
+// Container uses LOG_LEVEL, host uses MERCURY_LOG_LEVEL (then calls configureLogger())
+let currentLevel = parseLevel(
+  process.env.LOG_LEVEL ?? process.env.MERCURY_LOG_LEVEL,
+);
+let currentFormat = parseFormat(
+  process.env.LOG_FORMAT ?? process.env.MERCURY_LOG_FORMAT,
+);
 
 /** Configure logger settings (typically called after config load) */
 export function configureLogger(opts: {
