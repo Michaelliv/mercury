@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="Mercury" width="256" height="256" />
+  <img src="assets/logo-with-text.svg" alt="Mercury" height="120" />
 </p>
-
-# Mercury
 
 <p align="center">
   <em>There are many claws, but this one is mine.</em>
