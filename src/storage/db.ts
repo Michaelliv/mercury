@@ -448,6 +448,15 @@ export class Db {
       .all(groupId) as GroupRole[];
   }
 
+  deleteRole(groupId: string, platformUserId: string): boolean {
+    const result = this.db
+      .query(
+        `DELETE FROM group_roles WHERE group_id = ? AND platform_user_id = ?`,
+      )
+      .run(groupId, platformUserId);
+    return result.changes > 0;
+  }
+
   seedAdmins(groupId: string, adminIds: string[]): void {
     const now = Date.now();
     for (const id of adminIds) {

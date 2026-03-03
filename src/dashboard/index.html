@@ -4,10 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mercury</title>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js"></script>
   <style>
     :root {
       --bg: #0d1117;
       --bg-secondary: #161b22;
+      --bg-hover: #1c2128;
       --border: #30363d;
       --text: #c9d1d9;
       --text-muted: #8b949e;
@@ -15,90 +18,346 @@
       --green: #3fb950;
       --yellow: #d29922;
       --red: #f85149;
+      --radius: 6px;
     }
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
-      font-size: 13px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      padding: 16px;
     }
 
-    .container {
-      max-width: 900px;
+    /* ─── Layout ─────────────────────────────────────────────────────────── */
+
+    .shell {
+      max-width: 1100px;
       margin: 0 auto;
+      padding: 0 16px;
     }
+
+    /* ─── Header ─────────────────────────────────────────────────────────── */
 
     .header {
-      border: 1px solid var(--border);
-      padding: 12px 16px;
-      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      padding: 12px 0;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-bottom: 16px;
     }
 
-    .header h1 {
-      font-size: 14px;
-      font-weight: normal;
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo {
+      font-size: 16px;
+      font-weight: 600;
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    .header h1 .wing {
-      font-size: 16px;
+    .logo .wing { font-size: 20px; }
+
+    /* ─── Health Banner ──────────────────────────────────────────────────── */
+
+    .health-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      font-size: 13px;
     }
 
-    .header .uptime {
+    .health-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .health-status.healthy { color: var(--green); }
+    .health-status.degraded { color: var(--yellow); }
+    .health-status.critical { color: var(--red); }
+
+    .health-icon { font-size: 14px; }
+
+    .health-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
       color: var(--text-muted);
     }
 
-    .panel {
-      border: 1px solid var(--border);
+    .connection {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .connection::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .connection.disconnected::before { background: var(--red); }
+
+    /* ─── Navigation ─────────────────────────────────────────────────────── */
+
+    .nav {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--border);
       margin-bottom: 16px;
     }
 
-    .panel-header {
+    .nav-item {
+      padding: 10px 16px;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+
+    .nav-item:hover { color: var(--text); }
+
+    .nav-item.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .nav-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 8px;
+    }
+
+    /* ─── Panels ─────────────────────────────────────────────────────────── */
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
       background: var(--bg-secondary);
-      padding: 8px 16px;
+    }
+
+    .panel-header {
+      padding: 10px 16px;
       border-bottom: 1px solid var(--border);
       color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-body { padding: 12px 16px; }
+
+    /* ─── Grid ───────────────────────────────────────────────────────────── */
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    /* ─── Stats ──────────────────────────────────────────────────────────── */
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+    }
+
+    /* ─── Tables ─────────────────────────────────────────────────────────── */
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table th {
+      text-align: left;
+      color: var(--text-muted);
+      font-weight: 500;
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border);
     }
 
-    .panel-body {
-      padding: 12px 16px;
+    .table td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border);
     }
 
-    .row {
+    .table tr:last-child td { border-bottom: none; }
+
+    .table tr.clickable { cursor: pointer; }
+    .table tr.clickable:hover { background: var(--bg-hover); }
+
+    .table .actions { white-space: nowrap; }
+
+    /* ─── Rows ───────────────────────────────────────────────────────────── */
+
+    .adapter-row, .task-row, .role-row, .active-run {
       display: flex;
       justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+    }
+
+    .adapter-row:last-child, .task-row:last-child, 
+    .role-row:last-child, .active-run:last-child { border-bottom: none; }
+
+    .activity-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+    .activity-row:hover { background: var(--bg-hover); margin: 0 -16px; padding: 8px 16px; }
+    .activity-row:last-child { border-bottom: none; }
+
+    .activity-row .time { color: var(--text-muted); min-width: 60px; font-size: 12px; }
+    .activity-row .preview { color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ─── Messages ───────────────────────────────────────────────────────── */
+
+    .messages-list {
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .message {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .message:last-child { border-bottom: none; }
+
+    .message-meta {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+
+    .message-content {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .message.assistant { background: rgba(88, 166, 255, 0.05); }
+    .message.user { background: rgba(63, 185, 80, 0.05); }
+
+    /* ─── Logs ───────────────────────────────────────────────────────────── */
+
+    .logs-list {
+      max-height: 600px;
+      overflow-y: auto;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+    }
+
+    .log-row {
+      display: flex;
+      gap: 12px;
       padding: 6px 0;
       border-bottom: 1px solid var(--border);
     }
 
-    .row:last-child {
-      border-bottom: none;
+    .log-row:last-child { border-bottom: none; }
+    .log-row .time { color: var(--text-muted); min-width: 80px; }
+    .log-row .level { min-width: 50px; font-weight: 500; }
+    .log-row .level.info { color: var(--accent); }
+    .log-row .level.error { color: var(--red); }
+    .log-row .level.warn { color: var(--yellow); }
+    .log-row .source { color: var(--text-muted); min-width: 80px; }
+    .log-row .message { flex: 1; }
+
+    /* ─── Elements ───────────────────────────────────────────────────────── */
+
+    .badge {
+      display: inline-block;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
     }
 
-    .row .label {
-      color: var(--text-muted);
+    .badge.green { border-color: var(--green); color: var(--green); }
+    .badge.pulse { animation: pulse 2s ease-in-out infinite; background: var(--yellow); border-color: var(--yellow); color: var(--bg); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
     }
 
-    .row .value {
-      text-align: right;
+    .btn {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.15s, border-color 0.15s;
     }
+
+    .btn:hover { background: var(--bg-hover); border-color: var(--text-muted); }
+
+    .btn-sm { padding: 4px 8px; font-size: 12px; }
+    .btn-danger:hover { border-color: var(--red); color: var(--red); }
 
     .status {
       display: inline-flex;
@@ -114,653 +373,247 @@
       background: var(--text-muted);
     }
 
-    .status.connected::before {
-      background: var(--green);
-    }
+    .status.connected::before { background: var(--green); }
+    .status.active::before { background: var(--yellow); animation: pulse 1s ease-in-out infinite; }
 
-    .status.disconnected::before {
-      background: var(--red);
-    }
+    .role { font-weight: 500; font-size: 12px; }
+    .role.user { color: var(--accent); }
+    .role.assistant { color: var(--green); }
+    .role.ambient { color: var(--text-muted); }
 
-    .status.active::before {
-      background: var(--yellow);
-      animation: pulse 1s ease-in-out infinite;
-    }
+    .mono { font-family: 'SF Mono', 'Fira Code', monospace; color: var(--accent); }
+    .muted { color: var(--text-muted); }
+    .truncate { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
+    .empty, .empty-small { 
+      color: var(--text-muted); 
+      font-style: italic; 
+      text-align: center; 
     }
+    .empty { padding: 24px 0; }
+    .empty-small { padding: 12px 0; }
 
-    .connection-status {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      display: inline-block;
-      margin-left: 8px;
-      background: var(--green);
-      transition: background 0.3s ease;
-    }
-
-    .connection-status.error {
-      background: var(--red);
-    }
-
-    .connection-status.loading {
-      background: var(--yellow);
-      animation: pulse 1s ease-in-out infinite;
-    }
-
-    .badge {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border);
-      padding: 2px 8px;
-      border-radius: 3px;
-      font-size: 11px;
-    }
-
-    .badge.green {
-      border-color: var(--green);
-      color: var(--green);
-    }
-
-    .table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    .table th {
-      text-align: left;
-      color: var(--text-muted);
-      font-weight: normal;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      padding: 8px 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .table td {
-      padding: 8px 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .table tr:last-child td {
-      border-bottom: none;
-    }
-
-    .table .mono {
-      font-family: inherit;
+    .link {
       color: var(--accent);
-    }
-
-    .table .muted {
-      color: var(--text-muted);
-    }
-
-    .table .truncate {
-      max-width: 200px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .empty {
-      color: var(--text-muted);
-      font-style: italic;
-      padding: 16px 0;
-      text-align: center;
-    }
-
-    .activity-item {
-      display: flex;
-      gap: 8px;
-      padding: 4px 0;
-      border-bottom: 1px solid var(--border);
+      text-decoration: none;
       font-size: 12px;
     }
-    .activity-item:last-child { border-bottom: none; }
-    .activity-item .time { color: var(--text-muted); min-width: 50px; }
-    .activity-item .role { min-width: 60px; }
-    .activity-item .role.user { color: var(--accent); }
-    .activity-item .role.assistant { color: var(--green); }
-    .activity-item .role.ambient { color: var(--text-muted); }
-    .activity-item .preview { color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    .metrics {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-    }
+    .link:hover { text-decoration: underline; }
 
-    .metric {
-      text-align: center;
-      padding: 16px 8px;
-    }
-
-    .metric .value {
-      font-size: 24px;
-      font-weight: bold;
-      color: var(--accent);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .metric .label {
-      font-size: 10px;
+    .back {
       color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-top: 4px;
+      text-decoration: none;
+      font-size: 13px;
     }
 
-    .refresh-indicator {
-      color: var(--text-muted);
-      font-size: 11px;
-    }
+    .back:hover { color: var(--text); }
 
-    .refresh-indicator.loading {
-      color: var(--yellow);
-    }
+    /* ─── Page Header ────────────────────────────────────────────────────── */
 
-    .auto-refresh {
-      color: var(--green);
-      cursor: pointer;
-      font-size: 11px;
-      margin-left: 8px;
-      transition: color 0.2s ease;
-    }
-
-    .auto-refresh:hover {
-      opacity: 0.8;
-    }
-
-    .auto-refresh.paused {
-      color: var(--text-muted);
-    }
-
-    .help-hint {
-      color: var(--text-muted);
-      font-size: 11px;
-      margin-left: 12px;
-      cursor: help;
-    }
-
-    .help-hint:hover {
-      color: var(--accent);
-    }
-
-    .help-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 99;
-      display: none;
-    }
-
-    .help-overlay.visible {
-      display: block;
-    }
-
-    .help-modal {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: var(--bg-secondary);
-      border: 1px solid var(--border);
-      padding: 16px 24px;
-      z-index: 100;
-      display: none;
-      min-width: 320px;
-    }
-
-    .help-modal.visible {
-      display: block;
-    }
-
-    .help-modal h2 {
-      font-size: 11px;
-      font-weight: normal;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .help-modal .shortcut {
+    .page-header {
       display: flex;
       justify-content: space-between;
-      padding: 6px 0;
-      gap: 24px;
+      align-items: center;
+      margin-bottom: 16px;
     }
 
-    .help-modal .key {
-      font-weight: bold;
-      color: var(--accent);
-      min-width: 60px;
+    .page-header h2 {
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
-    .help-modal .desc {
+    .search-box input, .select {
+      background: var(--bg);
+      border: 1px solid var(--border);
       color: var(--text);
-      flex: 1;
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      width: 200px;
     }
 
-    /* Responsive */
+    .search-box input:focus, .select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    /* ─── Responsive ─────────────────────────────────────────────────────── */
+
     @media (max-width: 768px) {
-      body { padding: 8px; }
-      .container { max-width: 100%; }
-      .metrics { grid-template-columns: repeat(2, 1fr); }
-      .header { flex-direction: column; gap: 8px; text-align: center; }
-      .header h1 { justify-content: center; }
-      .table { font-size: 11px; }
-      .table .truncate { max-width: 120px; }
-      .help-modal { width: 90%; min-width: auto; }
-    }
-
-    @media (max-width: 480px) {
-      .metrics { gap: 8px; }
-      .metric { padding: 12px 4px; }
-      .metric .value { font-size: 18px; }
-      .panel-body { padding: 8px 12px; }
+      .shell { padding: 0 12px; }
+      .header { flex-direction: column; gap: 12px; }
+      .health-banner { flex-direction: column; gap: 8px; }
+      .nav { overflow-x: auto; }
+      .nav-item { padding: 10px 12px; white-space: nowrap; }
+      .page-header { flex-direction: column; gap: 12px; align-items: flex-start; }
+      .search-box input { width: 100%; }
     }
   </style>
 </head>
-<body>
-  <div class="container">
+<body hx-ext="sse" sse-connect="/dashboard/events">
+  <div class="shell">
+    <!-- Header -->
     <div class="header">
-      <h1><span class="wing">🪽</span> MERCURY <span class="connection-status" id="conn-status"></span></h1>
-      <div>
-        <span class="uptime" id="uptime">—</span>
-        <span class="refresh-indicator" id="refresh">●</span>
-        <span class="auto-refresh" id="auto-refresh" onclick="toggleAutoRefresh()" title="Toggle auto-refresh">●</span>
-        <span class="help-hint" onclick="toggleHelp()">?</span>
+      <div class="header-left">
+        <div class="logo"><span class="wing">🪽</span> MERCURY</div>
+      </div>
+      <div id="active-count" sse-swap="active-count"></div>
+    </div>
+
+    <!-- Health Banner -->
+    <div class="health-banner" id="health" sse-swap="health">
+      <div class="health-status">
+        <span class="health-icon">⏳</span>
+        <span class="health-message">Connecting...</span>
+      </div>
+      <div class="health-meta">
+        <span class="connection" id="connection">live</span>
       </div>
     </div>
 
-    <div class="panel">
-      <div class="panel-header">Status</div>
-      <div class="panel-body metrics" id="metrics">
-        <div class="metric">
-          <div class="value" id="m-adapters">—</div>
-          <div class="label">Adapters</div>
-        </div>
-        <div class="metric">
-          <div class="value" id="m-groups">—</div>
-          <div class="label">Groups</div>
-        </div>
-        <div class="metric">
-          <div class="value" id="m-queue">—</div>
-          <div class="label">Queue</div>
-        </div>
-        <div class="metric">
-          <div class="value" id="m-containers">—</div>
-          <div class="label">Active</div>
-        </div>
-      </div>
-    </div>
+    <!-- Navigation -->
+    <nav class="nav" id="nav">
+      <a class="nav-item active" 
+         hx-get="/dashboard/page/overview" 
+         hx-target="#main" 
+         hx-push-url="true"
+         onclick="setActiveNav(this)">Overview</a>
+      <a class="nav-item" 
+         hx-get="/dashboard/page/groups" 
+         hx-target="#main" 
+         hx-push-url="true"
+         onclick="setActiveNav(this)">Groups</a>
+      <a class="nav-item" 
+         hx-get="/dashboard/page/tasks" 
+         hx-target="#main" 
+         hx-push-url="true"
+         onclick="setActiveNav(this)">Tasks</a>
+      <a class="nav-item" 
+         hx-get="/dashboard/page/permissions" 
+         hx-target="#main" 
+         hx-push-url="true"
+         onclick="setActiveNav(this)">Permissions</a>
+      <a class="nav-item" 
+         hx-get="/dashboard/page/logs" 
+         hx-target="#main" 
+         hx-push-url="true"
+         onclick="setActiveNav(this)">Logs</a>
+    </nav>
 
-    <div class="panel" id="active-panel" style="display:none">
-      <div class="panel-header">Active Runs</div>
-      <div class="panel-body" id="active-runs"></div>
-    </div>
-
-    <div class="panel">
-      <div class="panel-header">Adapters</div>
-      <div class="panel-body" id="adapters">
-        <div class="empty">Loading...</div>
-      </div>
-    </div>
-
-    <div class="panel" id="activity-panel">
-      <div class="panel-header">Recent Activity</div>
-      <div class="panel-body" id="activity">
-        <div class="empty">Loading...</div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="panel-header">Recent Groups</div>
-      <div class="panel-body">
-        <table class="table" id="groups-table">
-          <thead>
-            <tr>
-              <th>Group</th>
-              <th>Last Activity</th>
-            </tr>
-          </thead>
-          <tbody id="groups">
-            <tr><td colspan="2" class="empty">Loading...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="panel-header">Scheduled Tasks</div>
-      <div class="panel-body">
-        <table class="table" id="tasks-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Schedule</th>
-              <th>Prompt</th>
-              <th>Next Run</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="tasks">
-            <tr><td colspan="5" class="empty">Loading...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="panel-header">Permissions</div>
-      <div class="panel-body">
-        <table class="table" id="roles-table">
-          <thead>
-            <tr>
-              <th>Platform</th>
-              <th>User</th>
-              <th>Role</th>
-            </tr>
-          </thead>
-          <tbody id="roles">
-            <tr><td colspan="3" class="empty">Loading...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-  </div>
-
-  <div class="help-overlay" id="help-overlay" onclick="closeHelp()"></div>
-  <div class="help-modal" id="help-modal">
-    <h2>Keyboard Shortcuts</h2>
-    <div class="shortcut">
-      <span class="key">r</span>
-      <span class="desc">Refresh now</span>
-    </div>
-    <div class="shortcut">
-      <span class="key">p</span>
-      <span class="desc">Pause/resume auto-refresh</span>
-    </div>
-    <div class="shortcut">
-      <span class="key">?</span>
-      <span class="desc">Toggle this help</span>
-    </div>
-    <div class="shortcut">
-      <span class="key">Esc</span>
-      <span class="desc">Close</span>
-    </div>
+    <!-- Main Content -->
+    <main id="main" hx-get="/dashboard/page/overview" hx-trigger="load">
+      <div class="empty">Loading...</div>
+    </main>
   </div>
 
   <script>
-    const API_BASE = '';
-
-    const history = { adapters: [], groups: [], queue: [], containers: [] };
-    const MAX_HISTORY = 20;
-
-    function pushHistory(key, val) {
-      history[key].push(val);
-      if (history[key].length > MAX_HISTORY) history[key].shift();
-    }
-
-    function sparkline(data) {
-      if (data.length < 2) return '';
-      const max = Math.max(...data, 1);
-      const w = 50, h = 12;
-      const pts = data.map((v, i) => `${(i/(data.length-1))*w},${h-(v/max)*h}`).join(' ');
-      return `<svg width="${w}" height="${h}" style="opacity:0.4;margin-top:4px"><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="1.5"/></svg>`;
-    }
-
-    let autoRefreshEnabled = true;
-    let refreshInterval = null;
-
-    function toggleAutoRefresh() {
-      autoRefreshEnabled = !autoRefreshEnabled;
-      const el = document.getElementById('auto-refresh');
-      el.classList.toggle('paused', !autoRefreshEnabled);
-      el.title = autoRefreshEnabled ? 'Auto-refresh on (click to pause)' : 'Auto-refresh paused (click to resume)';
-      
-      if (autoRefreshEnabled && !refreshInterval) {
-        refreshInterval = setInterval(fetchData, 5000);
-      } else if (!autoRefreshEnabled && refreshInterval) {
-        clearInterval(refreshInterval);
-        refreshInterval = null;
+    // Navigation
+    function setActiveNav(el) {
+      for (const item of document.querySelectorAll('.nav-item')) {
+        item.classList.remove('active');
       }
+      el.classList.add('active');
     }
 
-    function toggleHelp() {
-      const modal = document.getElementById('help-modal');
-      const overlay = document.getElementById('help-overlay');
-      modal.classList.toggle('visible');
-      overlay.classList.toggle('visible');
-    }
+    // Handle browser back/forward
+    window.addEventListener('popstate', () => {
+      const path = window.location.pathname;
+      const navItems = document.querySelectorAll('.nav-item');
+      navItems.forEach(item => {
+        const href = item.getAttribute('hx-get');
+        if (path.includes(href.replace('/dashboard/page/', ''))) {
+          item.classList.add('active');
+        } else {
+          item.classList.remove('active');
+        }
+      });
+    });
 
-    function closeHelp() {
-      const modal = document.getElementById('help-modal');
-      const overlay = document.getElementById('help-overlay');
-      modal.classList.remove('visible');
-      overlay.classList.remove('visible');
+    // SSE connection state
+    const connectionEl = document.getElementById('connection');
+    
+    document.body.addEventListener('htmx:sseOpen', () => {
+      connectionEl.textContent = 'live';
+      connectionEl.classList.remove('disconnected');
+    });
+
+    document.body.addEventListener('htmx:sseError', () => {
+      connectionEl.textContent = 'reconnecting...';
+      connectionEl.classList.add('disconnected');
+    });
+
+    document.body.addEventListener('htmx:sseClose', () => {
+      connectionEl.textContent = 'disconnected';
+      connectionEl.classList.add('disconnected');
+    });
+
+    // Table search filter
+    function filterTable(input, tableId) {
+      const filter = input.value.toLowerCase();
+      const table = document.getElementById(tableId);
+      const rows = table.querySelectorAll('tbody tr');
+      
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(filter) ? '' : 'none';
+      });
     }
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
-      // r - refresh now
-      if (e.key === 'r' && !e.metaKey && !e.ctrlKey) {
+      // Don't trigger when typing in inputs
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      const navItems = document.querySelectorAll('.nav-item');
+      
+      if (e.key === '1') navItems[0]?.click();
+      if (e.key === '2') navItems[1]?.click();
+      if (e.key === '3') navItems[2]?.click();
+      if (e.key === '4') navItems[3]?.click();
+      if (e.key === '5') navItems[4]?.click();
+      if (e.key === '?') alert('Keyboard shortcuts:\n1-5: Navigate tabs\n/: Focus search');
+      if (e.key === '/') {
         e.preventDefault();
-        fetchData();
-      }
-      // p - pause/resume auto-refresh
-      if (e.key === 'p') {
-        e.preventDefault();
-        toggleAutoRefresh();
-      }
-      // ? - show help
-      if (e.key === '?') {
-        e.preventDefault();
-        toggleHelp();
-      }
-      // Escape - close help
-      if (e.key === 'Escape') {
-        closeHelp();
+        document.querySelector('input[type="text"]')?.focus();
       }
     });
 
-    function formatUptime(seconds) {
-      const d = Math.floor(seconds / 86400);
-      const h = Math.floor((seconds % 86400) / 3600);
-      const m = Math.floor((seconds % 3600) / 60);
-      const s = seconds % 60;
-      
-      if (d > 0) return `${d}d ${h}h ${m}m`;
-      if (h > 0) return `${h}h ${m}m ${s}s`;
-      if (m > 0) return `${m}m ${s}s`;
-      return `${s}s`;
-    }
-
-    function formatRelativeTime(timestamp) {
-      const now = Date.now();
-      const diff = now - timestamp;
-      const seconds = Math.floor(diff / 1000);
-      const minutes = Math.floor(seconds / 60);
-      const hours = Math.floor(minutes / 60);
-      const days = Math.floor(hours / 24);
-
-      if (days > 0) return `${days}d ago`;
-      if (hours > 0) return `${hours}h ago`;
-      if (minutes > 0) return `${minutes}m ago`;
-      return 'just now';
-    }
-
-    function formatFutureTime(timestamp) {
-      const now = Date.now();
-      const diff = timestamp - now;
-      if (diff < 0) return 'now';
-      
-      const seconds = Math.floor(diff / 1000);
-      const minutes = Math.floor(seconds / 60);
-      const hours = Math.floor(minutes / 60);
-      const days = Math.floor(hours / 24);
-
-      if (days > 0) return `in ${days}d`;
-      if (hours > 0) return `in ${hours}h ${minutes % 60}m`;
-      if (minutes > 0) return `in ${minutes}m`;
-      return `in ${seconds}s`;
-    }
-
-    function truncate(str, len = 40) {
-      if (!str) return '—';
-      return str.length > len ? `${str.slice(0, len)}...` : str;
-    }
-
-    function escapeHtml(str) {
-      if (!str) return '';
-      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    async function fetchData() {
-      const refresh = document.getElementById('refresh');
-      const connStatus = document.getElementById('conn-status');
-      refresh.classList.add('loading');
-      connStatus.className = 'connection-status loading';
-      
-      try {
-        const [health, dashboard] = await Promise.all([
-          fetch(`${API_BASE}/health`).then(r => r.json()),
-          fetch(`${API_BASE}/dashboard/data`).then(r => r.json()).catch(() => ({ groups: [], tasks: [] }))
-        ]);
-
-        // Update uptime
-        document.getElementById('uptime').textContent = `up ${formatUptime(health.uptime)}`;
-
-        // Update metrics
-        const adapterCount = Object.keys(health.adapters).length;
-        pushHistory('adapters', adapterCount);
-        document.getElementById('m-adapters').innerHTML = adapterCount + sparkline(history.adapters);
-        
-        const groupCount = dashboard.groups?.length ?? 0;
-        pushHistory('groups', groupCount);
-        document.getElementById('m-groups').innerHTML = groupCount + sparkline(history.groups);
-        
-        const queueCount = health.queue.active + health.queue.pending;
-        pushHistory('queue', queueCount);
-        document.getElementById('m-queue').innerHTML = queueCount + sparkline(history.queue);
-        
-        const containerCount = health.containers.active;
-        pushHistory('containers', containerCount);
-        document.getElementById('m-containers').innerHTML = containerCount + sparkline(history.containers);
-
-        // Update active runs
-        const activePanel = document.getElementById('active-panel');
-        const activeRuns = document.getElementById('active-runs');
-        if (dashboard.activeGroups?.length > 0) {
-          activePanel.style.display = 'block';
-          activeRuns.innerHTML = dashboard.activeGroups.map(g => {
-            const platform = g.split(':')[0];
-            return `<div class="row"><span class="badge">${platform}</span> <span class="status active">running</span></div>`;
-          }).join('');
-        } else {
-          activePanel.style.display = 'none';
-        }
-
-        // Update adapters
-        const adaptersEl = document.getElementById('adapters');
-        const adapterRows = Object.entries(health.adapters).map(([name, connected]) => {
-          const status = connected ? 'connected' : 'disconnected';
-          return `<div class="row">
-            <span class="label">${name}</span>
-            <span class="status ${status}">${status}</span>
-          </div>`;
-        }).join('');
-        adaptersEl.innerHTML = adapterRows || '<div class="empty">No adapters configured</div>';
-
-        // Update activity
-        const activityRes = await fetch('/dashboard/activity').then(r => r.json()).catch(() => ({ activity: [] }));
-        const activityEl = document.getElementById('activity');
-        if (activityRes.activity?.length > 0) {
-          activityEl.innerHTML = activityRes.activity.map(a => `
-            <div class="activity-item">
-              <span class="time">${formatRelativeTime(a.time)}</span>
-              <span class="role ${a.role}">${a.role}</span>
-              <span class="preview">${escapeHtml(a.preview)}</span>
-            </div>
-          `).join('');
-        } else {
-          activityEl.innerHTML = '<div class="empty">No recent activity</div>';
-        }
-
-        // Update groups
-        const groupsEl = document.getElementById('groups');
-        if (dashboard.groups && dashboard.groups.length > 0) {
-          const groupRows = dashboard.groups.slice(0, 10).map(g => {
-            const name = g.title || g.shortId;
-            return `<tr>
-              <td><span class="badge">${g.platform}</span> <span class="mono truncate" title="${escapeHtml(g.id)}">${escapeHtml(name)}</span></td>
-              <td class="muted">${formatRelativeTime(g.lastActivity)}</td>
-            </tr>`;
-          }).join('');
-          groupsEl.innerHTML = groupRows;
-        } else {
-          groupsEl.innerHTML = '<tr><td colspan="2" class="empty">No groups yet</td></tr>';
-        }
-
-        // Update tasks
-        const tasksEl = document.getElementById('tasks');
-        if (dashboard.tasks && dashboard.tasks.length > 0) {
-          const taskRows = dashboard.tasks.map(t => {
-            const status = t.active ? 'active' : 'paused';
-            const statusClass = t.active ? 'green' : '';
-            return `<tr>
-              <td class="mono">#${t.id}</td>
-              <td class="mono">${escapeHtml(t.cron)}</td>
-              <td class="truncate">${escapeHtml(truncate(t.prompt, 30))}</td>
-              <td class="muted">${formatFutureTime(t.nextRunAt)}</td>
-              <td><span class="badge ${statusClass}">${status}</span></td>
-            </tr>`;
-          }).join('');
-          tasksEl.innerHTML = taskRows;
-        } else {
-          tasksEl.innerHTML = '<tr><td colspan="5" class="empty">No scheduled tasks</td></tr>';
-        }
-
-        // Update roles
-        const rolesEl = document.getElementById('roles');
-        if (dashboard.roles && dashboard.roles.length > 0) {
-          const roleRows = dashboard.roles.map(r => {
-            const roleClass = r.role === 'admin' ? 'green' : '';
-            const shortUserId = r.userId.length > 20 ? `...${r.userId.slice(-15)}` : r.userId;
-            return `<tr>
-              <td><span class="badge">${r.platform}</span></td>
-              <td class="mono truncate" title="${escapeHtml(r.userId)}">${escapeHtml(shortUserId)}</td>
-              <td><span class="badge ${roleClass}">${r.role}</span></td>
-            </tr>`;
-          }).join('');
-          rolesEl.innerHTML = roleRows;
-        } else {
-          rolesEl.innerHTML = '<tr><td colspan="3" class="empty">No roles assigned</td></tr>';
-        }
-
-        connStatus.className = 'connection-status';
-      } catch (err) {
-        console.error('Failed to fetch data:', err);
-        connStatus.className = 'connection-status error';
-      } finally {
-        refresh.classList.remove('loading');
+    // Refresh current page after htmx actions (like delete, pause, etc.)
+    document.body.addEventListener('htmx:afterRequest', (e) => {
+      if (e.detail.requestConfig.verb !== 'get') {
+        // Refresh the current page after mutations
+        setTimeout(() => {
+          const activeNav = document.querySelector('.nav-item.active');
+          if (activeNav) activeNav.click();
+        }, 100);
       }
-    }
+    });
 
-    // Initial fetch
-    fetchData();
-
-    // Poll every 5 seconds
-    refreshInterval = setInterval(fetchData, 5000);
+    // Handle hash-based navigation on page load (for refresh support)
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash.slice(1); // Remove #
+      if (hash) {
+        // Find the nav item that matches and click it
+        const navItems = document.querySelectorAll('.nav-item');
+        let found = false;
+        for (const item of navItems) {
+          const href = item.getAttribute('hx-get');
+          if (href && href.includes(hash.split('/')[0])) {
+            item.click();
+            found = true;
+            break;
+          }
+        }
+        // If it's a detail page (e.g., groups/id), load it directly
+        if (!found && hash.includes('/')) {
+          htmx.ajax('GET', `/dashboard/page/${hash}`, '#main');
+        }
+      }
+    });
   </script>
 </body>
 </html>

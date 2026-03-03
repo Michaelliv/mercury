@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import type { WhatsAppBaileysAdapter } from "./adapters/whatsapp.js";
 import type { AppConfig } from "./config.js";
 import { createApiApp } from "./core/api.js";
+import { createDashboardRoutes } from "./core/routes/dashboard.js";
 import type { MercuryCoreRuntime } from "./core/runtime.js";
 import { logger } from "./logger.js";
 
@@ -66,71 +67,19 @@ export function createApp(ctx: ServerContext): Hono {
     }
   });
 
-  app.get("/dashboard/activity", (c) => {
-    const groups = core.db.listGroups();
-    const activity: Array<{
-      group: string;
-      role: string;
-      preview: string;
-      time: number;
-    }> = [];
-    for (const g of groups.slice(0, 5)) {
-      const msgs = core.db.getRecentMessages(g.id, 3);
-      for (const m of msgs) {
-        activity.push({
-          group: g.id.split(":")[0],
-          role: m.role,
-          preview: m.content.slice(0, 60),
-          time: m.createdAt,
-        });
-      }
-    }
-    activity.sort((a, b) => b.time - a.time);
-    return c.json({ activity: activity.slice(0, 10) });
+  // Dashboard partials (htmx)
+  const adapterStatus: Record<string, boolean> = {};
+  for (const name of Object.keys(adapters)) {
+    adapterStatus[name] = true;
+  }
+
+  const dashboardRoutes = createDashboardRoutes({
+    core,
+    adapters: adapterStatus,
+    startTime,
   });
 
-  app.get("/dashboard/data", (c) => {
-    const groups = core.db
-      .listGroups()
-      .map((g) => {
-        const parts = g.id.split(":");
-        const platform = parts[0];
-        let shortId = parts.slice(1).join(":");
-        if (shortId.length > 20) shortId = `...${shortId.slice(-15)}`;
-
-        return {
-          id: g.id,
-          platform,
-          shortId,
-          title: g.title !== g.id ? g.title : null,
-          lastActivity: g.updatedAt,
-        };
-      })
-      .sort((a, b) => b.lastActivity - a.lastActivity);
-
-    const tasks = core.db.listTasks();
-    const activeGroups = core.containerRunner.getActiveGroups();
-
-    const roles: Array<{
-      groupId: string;
-      platform: string;
-      userId: string;
-      role: string;
-    }> = [];
-    for (const g of groups) {
-      const groupRoles = core.db.listRoles(g.id);
-      for (const r of groupRoles) {
-        roles.push({
-          groupId: g.id,
-          platform: g.platform,
-          userId: r.platformUserId,
-          role: r.role,
-        });
-      }
-    }
-
-    return c.json({ groups, tasks, activeGroups, roles });
-  });
+  app.route("/dashboard", dashboardRoutes);
 
   // ─── Health & Auth ──────────────────────────────────────────────────────
 
