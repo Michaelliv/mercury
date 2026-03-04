@@ -94,18 +94,18 @@ async function main() {
 
   // ─── Message Sender (for scheduled tasks) ───────────────────────────────
 
-  const adapterNames = Object.keys(adapters);
-
   const messageSender: import("./types.js").MessageSender = {
     async send(groupId, text) {
-      const platform = adapterNames.find((name) =>
-        groupId.startsWith(`${name}:`) || groupId.startsWith(`${name}_`),
-      );
-      if (!platform) {
-        logger.warn("Message dropped — no adapter for platform", { groupId });
+      const [platform] = groupId.split(":");
+      const adapter = adapters[platform];
+      if (!adapter) {
+        logger.warn("Message dropped — no adapter for platform", {
+          groupId,
+          platform,
+        });
         return;
       }
-      await adapters[platform].postMessage(groupId, text);
+      await adapter.postMessage(groupId, text);
     },
   };
 

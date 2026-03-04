@@ -157,9 +157,7 @@ export class DiscordNativeAdapter
   }
 
   decodeThreadId(threadId: string): DiscordThreadId {
-    // Support both colon (discord:guild:channel) and underscore (discord_guild_channel) formats
-    const sep = threadId.includes(":") ? ":" : "_";
-    const parts = threadId.split(sep);
+    const parts = threadId.split(":");
     if (parts.length < 3 || parts[0] !== "discord") {
       throw new Error(`Invalid Discord thread ID: ${threadId}`);
     }
