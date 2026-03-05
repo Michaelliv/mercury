@@ -100,6 +100,15 @@ export class Db {
         updated_at INTEGER NOT NULL,
         PRIMARY KEY (group_id, key)
       );
+
+      CREATE TABLE IF NOT EXISTS extension_state (
+        extension TEXT NOT NULL,
+        key TEXT NOT NULL,
+        value TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (extension, key)
+      );
     `);
 
     // Migration: add attachments column to messages table
@@ -540,6 +549,44 @@ export class Db {
          DO UPDATE SET value = excluded.value, updated_by = excluded.updated_by, updated_at = excluded.updated_at`,
       )
       .run(groupId, key, value, updatedBy, now, now);
+  }
+
+  // --- Extension State ---
+
+  getExtState(extension: string, key: string): string | null {
+    const row = this.db
+      .query(
+        "SELECT value FROM extension_state WHERE extension = ? AND key = ?",
+      )
+      .get(extension, key) as { value: string } | null;
+    return row?.value ?? null;
+  }
+
+  setExtState(extension: string, key: string, value: string): void {
+    const now = Date.now();
+    this.db
+      .query(
+        `INSERT INTO extension_state(extension, key, value, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(extension, key)
+         DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+      )
+      .run(extension, key, value, now, now);
+  }
+
+  deleteExtState(extension: string, key: string): boolean {
+    const result = this.db
+      .query("DELETE FROM extension_state WHERE extension = ? AND key = ?")
+      .run(extension, key);
+    return result.changes > 0;
+  }
+
+  listExtState(extension: string): Array<{ key: string; value: string }> {
+    return this.db
+      .query(
+        "SELECT key, value FROM extension_state WHERE extension = ? ORDER BY key ASC",
+      )
+      .all(extension) as Array<{ key: string; value: string }>;
   }
 
   close(): void {
