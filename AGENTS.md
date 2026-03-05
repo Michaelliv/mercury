@@ -74,7 +74,12 @@ src/
 │   └── pi-auth.ts              # Pi OAuth tokens
 │
 ├── extensions/
-│   └── types.ts                # Extension system type definitions
+│   ├── types.ts                # Extension system type definitions
+│   ├── api.ts                  # MercuryExtensionAPI implementation
+│   ├── loader.ts               # Extension discovery + ExtensionRegistry
+│   ├── hooks.ts                # Hook dispatcher (lifecycle events)
+│   ├── skills.ts               # Skill installation (copy to global dir)
+│   └── reserved.ts             # Reserved extension names (shared constant)
 │
 ├── cli/
 │   ├── mercury.ts              # Main CLI (init, run, build)
@@ -106,6 +111,9 @@ resources/
 | `config.ts` | Environment parsing with Zod |
 | `core/api.ts` | Creates API app, mounts route handlers |
 | `core/routes/*.ts` | Individual API route handlers |
+| `extensions/loader.ts` | Extension discovery, loading via Bun import, registry |
+| `extensions/hooks.ts` | Hook dispatch with mutation semantics for before/after_container |
+| `extensions/skills.ts` | Copy extension skills to global dir (not symlink — Docker mount) |
 
 ## Database Schema
 
