@@ -411,5 +411,52 @@ describe("WhatsAppBridge", () => {
       expect(content.image).toBeInstanceOf(Buffer);
       expect(content.caption).toBe("mixed");
     });
+
+    test("sends text separately when last file fails to read", async () => {
+      const { adapter, socketCalls } = createMockAdapter();
+      const bridge = new WhatsAppBridge(adapter as never);
+      const badFile: EgressFile = {
+        path: "/nonexistent/last.jpg",
+        filename: "last.jpg",
+        mimeType: "image/jpeg",
+        sizeBytes: 100,
+      };
+
+      await bridge.sendReply("whatsapp:group@g.us:group@g.us", "my text", [
+        badFile,
+      ]);
+
+      expect(socketCalls).toHaveLength(1);
+      expect((socketCalls[0].content as Record<string, unknown>).text).toBe(
+        "my text",
+      );
+    });
+
+    test("sends text separately when all files fail to read", async () => {
+      const { adapter, socketCalls } = createMockAdapter();
+      const bridge = new WhatsAppBridge(adapter as never);
+      const bad1: EgressFile = {
+        path: "/nonexistent/a.jpg",
+        filename: "a.jpg",
+        mimeType: "image/jpeg",
+        sizeBytes: 100,
+      };
+      const bad2: EgressFile = {
+        path: "/nonexistent/b.png",
+        filename: "b.png",
+        mimeType: "image/png",
+        sizeBytes: 100,
+      };
+
+      await bridge.sendReply("whatsapp:group@g.us:group@g.us", "fallback", [
+        bad1,
+        bad2,
+      ]);
+
+      expect(socketCalls).toHaveLength(1);
+      expect((socketCalls[0].content as Record<string, unknown>).text).toBe(
+        "fallback",
+      );
+    });
   });
 });

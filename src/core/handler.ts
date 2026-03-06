@@ -14,6 +14,10 @@ export interface MessageHandlerOptions {
 
 export function createMessageHandler(opts: MessageHandlerOptions) {
   const { bridge, core, config, ctx } = opts;
+  const defaultPatterns = config.triggerPatterns
+    .split(",")
+    .map((s: string) => s.trim())
+    .filter(Boolean);
 
   return async (
     thread: Thread,
@@ -31,10 +35,6 @@ export function createMessageHandler(opts: MessageHandlerOptions) {
       const groupId = bridge.groupId(thread.id);
       const isDM = bridge.isDM(thread.id);
 
-      const defaultPatterns = config.triggerPatterns
-        .split(",")
-        .map((s: string) => s.trim())
-        .filter(Boolean);
       const triggerConfig = loadTriggerConfig(core.db, groupId, {
         patterns: defaultPatterns,
         match: config.triggerMatch,

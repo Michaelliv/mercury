@@ -101,12 +101,6 @@ export class DiscordBridge implements PlatformBridge {
     files: EgressFile[],
   ): Promise<void> {
     const client = this.adapter.discordClient;
-    if (!client) {
-      logger.warn("Discord client unavailable, falling back to text-only");
-      if (text) await this.adapter.postMessage(threadId, text);
-      return;
-    }
-
     const { channelId, threadId: discordThreadId } =
       this.adapter.decodeThreadId(threadId);
     const targetId = discordThreadId || channelId;

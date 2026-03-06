@@ -81,10 +81,12 @@ export class WhatsAppBridge implements PlatformBridge {
       return;
     }
 
+    let textSent = !text;
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const isLast = i === files.length - 1;
-      const caption = isLast ? text : undefined;
+      const caption = isLast && !textSent ? text : undefined;
 
       let buffer: Buffer;
       try {
@@ -129,12 +131,17 @@ export class WhatsAppBridge implements PlatformBridge {
             caption,
           });
         }
+        if (caption) textSent = true;
       } catch (err) {
         logger.error("Failed to send file via WhatsApp", {
           filename: file.filename,
           error: err instanceof Error ? err.message : String(err),
         });
       }
+    }
+
+    if (!textSent) {
+      await sock.sendMessage(chatJid, { text });
     }
   }
 }

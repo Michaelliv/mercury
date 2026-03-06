@@ -10,7 +10,6 @@ import type { EgressFile, NormalizeContext } from "../src/types.js";
 
 function createMockAdapter(opts?: {
   botUserId?: string;
-  noClient?: boolean;
   channelSendable?: boolean;
 }) {
   const postCalls: { threadId: string; text: string }[] = [];
@@ -22,14 +21,12 @@ function createMockAdapter(opts?: {
     },
   };
 
-  const mockClient = opts?.noClient
-    ? undefined
-    : {
-        channels: {
-          fetch: async (_id: string) =>
-            opts?.channelSendable === false ? {} : mockChannel,
-        },
-      };
+  const mockClient = {
+    channels: {
+      fetch: async (_id: string) =>
+        opts?.channelSendable === false ? {} : mockChannel,
+    },
+  };
 
   return {
     adapter: {
@@ -271,17 +268,6 @@ describe("DiscordBridge", () => {
       expect((sendCalls[0].files[0] as { name: string }).name).toBe(
         "chart.png",
       );
-    });
-
-    test("falls back to postMessage if client unavailable", async () => {
-      const { adapter, postCalls } = createMockAdapter({ noClient: true });
-      const bridge = new DiscordBridge(adapter as never);
-      const file = tmpFile("chart.png");
-
-      await bridge.sendReply("discord:guild1:channel1", "fallback", [file]);
-
-      expect(postCalls).toHaveLength(1);
-      expect(postCalls[0].text).toBe("fallback");
     });
 
     test("falls back to postMessage if channel not sendable", async () => {

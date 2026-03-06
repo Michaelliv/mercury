@@ -129,6 +129,14 @@ export class SlackBridge implements PlatformBridge {
             filename: file.filename,
             status: resp.status,
           });
+        } else {
+          const body = (await resp.json()) as { ok?: boolean; error?: string };
+          if (!body.ok) {
+            logger.error("Slack file upload API error", {
+              filename: file.filename,
+              error: body.error,
+            });
+          }
         }
       } catch (err) {
         logger.error("Slack file upload failed", {
