@@ -76,7 +76,7 @@ interface IngressMessage {
 }
 ```
 
-All fields are required (no optional booleans) — adapters must make explicit decisions.
+All fields are required — no optional booleans or arrays.
 
 ### inbox/ directory
 

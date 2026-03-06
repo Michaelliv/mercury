@@ -211,9 +211,6 @@ describe("SlackBridge", () => {
     }
 
     test("sends text via postMessage then uploads files", async () => {
-      // We can't easily test the actual fetch to Slack API, but we can
-      // verify postMessage is called for text and the upload doesn't crash
-      // on an unreachable endpoint (fetch will fail, error is caught)
       const { adapter, postCalls } = createMockAdapter();
       const bridge = new SlackBridge(adapter as never, "xoxb-token");
       const file = tmpFile("report.pdf");
@@ -222,7 +219,6 @@ describe("SlackBridge", () => {
 
       expect(postCalls).toHaveLength(1);
       expect(postCalls[0].text).toBe("here's the report");
-      // File upload will fail silently (network error caught)
     });
 
     test("skips text if empty, still attempts file upload", async () => {
@@ -233,7 +229,6 @@ describe("SlackBridge", () => {
       await bridge.sendReply("slack:C123:ts", "", [file]);
 
       expect(postCalls).toHaveLength(0);
-      // File upload attempted (fails silently in test)
     });
   });
 });

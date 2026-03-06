@@ -406,7 +406,6 @@ describe("WhatsAppBridge", () => {
         goodFile,
       ]);
 
-      // Bad file skipped, good file sent with caption
       expect(socketCalls).toHaveLength(1);
       const content = socketCalls[0].content as Record<string, unknown>;
       expect(content.image).toBeInstanceOf(Buffer);

@@ -37,7 +37,6 @@ export class DiscordBridge implements PlatformBridge {
     const rawAttachments = msg.attachments ?? [];
     if (!text && rawAttachments.length === 0) return null;
 
-    // Convert Discord raw mentions <@botId> to @userName for trigger matching
     const botUserId = this.adapter.botUserId;
     if (botUserId) {
       text = text.replace(
@@ -49,7 +48,6 @@ export class DiscordBridge implements PlatformBridge {
     const isReplyToBot =
       (msg.metadata as { isReplyToBot?: boolean })?.isReplyToBot ?? false;
 
-    // Download attachments (Discord provides public CDN URLs)
     const attachments: MessageAttachment[] = [];
     if (ctx.media.enabled && rawAttachments.length > 0) {
       const workspace = ctx.getWorkspace(this.groupId(threadId));

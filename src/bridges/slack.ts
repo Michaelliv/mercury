@@ -48,7 +48,6 @@ export class SlackBridge implements PlatformBridge {
     const rawAttachments = msg.attachments ?? [];
     if (!text && rawAttachments.length === 0) return null;
 
-    // Download attachments (Slack files require bot token auth)
     const attachments: MessageAttachment[] = [];
     if (ctx.media.enabled && rawAttachments.length > 0) {
       const workspace = ctx.getWorkspace(this.groupId(threadId));

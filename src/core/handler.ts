@@ -28,7 +28,6 @@ export function createMessageHandler(opts: MessageHandlerOptions) {
         return;
       }
 
-      // Pre-trigger check using cheap sync helpers (before expensive normalize)
       const groupId = bridge.groupId(thread.id);
       const isDM = bridge.isDM(thread.id);
 
@@ -50,7 +49,6 @@ export function createMessageHandler(opts: MessageHandlerOptions) {
       const ingress = await bridge.normalize(thread.id, message, ctx);
       if (!ingress) return;
 
-      // Start typing for reply-to-bot if we didn't already
       if (ingress.isReplyToBot && !isDM && !triggerResult.matched) {
         if (isNew) await thread.subscribe();
         await thread.startTyping();

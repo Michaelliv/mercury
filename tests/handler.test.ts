@@ -306,7 +306,6 @@ describe("createMessageHandler", () => {
       ctx: defaultCtx,
     });
     const { thread, actions } = mockThread();
-    // Text that does NOT match trigger — typing should start after normalize detects isReplyToBot
     const msg = makeMessage("some reply");
 
     await handler(thread, msg, true);
