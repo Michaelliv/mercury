@@ -36,7 +36,10 @@ describe("Runtime rate limiting", () => {
     });
 
     // Mock the container runner to avoid actual container execution
-    runtime.containerRunner.reply = mock(async () => "mocked reply");
+    runtime.containerRunner.reply = mock(async () => ({
+      reply: "mocked reply",
+      files: [],
+    }));
   });
 
   afterEach(() => {

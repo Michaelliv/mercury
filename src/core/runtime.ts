@@ -364,7 +364,7 @@ export class MercuryCoreRuntime {
       const history = this.db.getMessagesSinceLastUserTrigger(groupId, 200);
       const startTime = Date.now();
 
-      let reply = await this.containerRunner.reply({
+      const containerResult = await this.containerRunner.reply({
         groupId,
         groupWorkspace: workspace,
         messages: history,
@@ -378,22 +378,21 @@ export class MercuryCoreRuntime {
 
       // Emit after_container hook
       if (this.hooks && this.extensionCtx) {
-        const result = await this.hooks.emitAfterContainer(
-          { groupId, prompt, reply, durationMs },
+        const hookResult = await this.hooks.emitAfterContainer(
+          { groupId, prompt, reply: containerResult.reply, durationMs },
           this.extensionCtx,
         );
-        if (result?.suppress) {
+        if (hookResult?.suppress) {
           return { reply: "", files: [] };
         }
-        if (result?.reply !== undefined) {
-          reply = result.reply;
+        if (hookResult?.reply !== undefined) {
+          containerResult.reply = hookResult.reply;
         }
       }
 
-      this.db.addMessage(groupId, "assistant", reply);
+      this.db.addMessage(groupId, "assistant", containerResult.reply);
 
-      // TODO: Scan outbox/ for files (implemented in #97)
-      return { reply, files: [] };
+      return containerResult;
     });
   }
 }
