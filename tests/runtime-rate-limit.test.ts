@@ -46,72 +46,80 @@ describe("Runtime rate limiting", () => {
   });
 
   test("allows requests under rate limit", async () => {
-    const input = {
+    const message = {
+      platform: "test",
       groupId: "test-group",
-      rawText: "@Pi hello",
+      text: "@Pi hello",
       callerId: "user1",
       isDM: false,
-      source: "chat-sdk" as const,
+      isReplyToBot: false,
+      attachments: [],
     };
 
     // Should allow 3 requests
-    const r1 = await runtime.handleRawInput(input);
+    const r1 = await runtime.handleRawInput(message, "chat-sdk");
     expect(r1.type).toBe("assistant");
 
-    const r2 = await runtime.handleRawInput(input);
+    const r2 = await runtime.handleRawInput(message, "chat-sdk");
     expect(r2.type).toBe("assistant");
 
-    const r3 = await runtime.handleRawInput(input);
+    const r3 = await runtime.handleRawInput(message, "chat-sdk");
     expect(r3.type).toBe("assistant");
   });
 
   test("blocks requests over rate limit", async () => {
-    const input = {
+    const message = {
+      platform: "test",
       groupId: "test-group",
-      rawText: "@Pi hello",
+      text: "@Pi hello",
       callerId: "user1",
       isDM: false,
-      source: "chat-sdk" as const,
+      isReplyToBot: false,
+      attachments: [],
     };
 
     // Use up the limit
-    await runtime.handleRawInput(input);
-    await runtime.handleRawInput(input);
-    await runtime.handleRawInput(input);
+    await runtime.handleRawInput(message, "chat-sdk");
+    await runtime.handleRawInput(message, "chat-sdk");
+    await runtime.handleRawInput(message, "chat-sdk");
 
     // Fourth request should be denied
-    const r4 = await runtime.handleRawInput(input);
+    const r4 = await runtime.handleRawInput(message, "chat-sdk");
     expect(r4.type).toBe("denied");
     expect(r4.reason).toBe("Rate limit exceeded. Try again shortly.");
   });
 
   test("different users have separate rate limits", async () => {
-    const user1Input = {
+    const user1Message = {
+      platform: "test",
       groupId: "test-group",
-      rawText: "@Pi hello",
+      text: "@Pi hello",
       callerId: "user1",
       isDM: false,
-      source: "chat-sdk" as const,
+      isReplyToBot: false,
+      attachments: [],
     };
 
-    const user2Input = {
+    const user2Message = {
+      platform: "test",
       groupId: "test-group",
-      rawText: "@Pi hello",
+      text: "@Pi hello",
       callerId: "user2",
       isDM: false,
-      source: "chat-sdk" as const,
+      isReplyToBot: false,
+      attachments: [],
     };
 
     // Use up user1's limit
-    await runtime.handleRawInput(user1Input);
-    await runtime.handleRawInput(user1Input);
-    await runtime.handleRawInput(user1Input);
+    await runtime.handleRawInput(user1Message, "chat-sdk");
+    await runtime.handleRawInput(user1Message, "chat-sdk");
+    await runtime.handleRawInput(user1Message, "chat-sdk");
 
-    const r4 = await runtime.handleRawInput(user1Input);
+    const r4 = await runtime.handleRawInput(user1Message, "chat-sdk");
     expect(r4.type).toBe("denied");
 
     // user2 should still be allowed
-    const r5 = await runtime.handleRawInput(user2Input);
+    const r5 = await runtime.handleRawInput(user2Message, "chat-sdk");
     expect(r5.type).toBe("assistant");
   });
 
@@ -120,43 +128,49 @@ describe("Runtime rate limiting", () => {
     runtime.db.ensureGroup("test-group");
     runtime.db.setRole("test-group", "admin1", "admin", "test");
 
-    const promptInput = {
+    const promptMessage = {
+      platform: "test",
       groupId: "test-group",
-      rawText: "@Pi hello",
+      text: "@Pi hello",
       callerId: "admin1",
       isDM: false,
-      source: "chat-sdk" as const,
+      isReplyToBot: false,
+      attachments: [],
     };
 
-    const stopInput = {
+    const stopMessage = {
+      platform: "test",
       groupId: "test-group",
-      rawText: "@Pi stop",
+      text: "@Pi stop",
       callerId: "admin1",
       isDM: false,
-      source: "chat-sdk" as const,
+      isReplyToBot: false,
+      attachments: [],
     };
 
     // Use up the limit with prompts
-    await runtime.handleRawInput(promptInput);
-    await runtime.handleRawInput(promptInput);
-    await runtime.handleRawInput(promptInput);
+    await runtime.handleRawInput(promptMessage, "chat-sdk");
+    await runtime.handleRawInput(promptMessage, "chat-sdk");
+    await runtime.handleRawInput(promptMessage, "chat-sdk");
 
     // Next prompt should be rate limited
-    const r4 = await runtime.handleRawInput(promptInput);
+    const r4 = await runtime.handleRawInput(promptMessage, "chat-sdk");
     expect(r4.type).toBe("denied");
 
     // But stop command should still work
-    const stopResult = await runtime.handleRawInput(stopInput);
+    const stopResult = await runtime.handleRawInput(stopMessage, "chat-sdk");
     expect(stopResult.type).toBe("command");
   });
 
   test("per-group rate limit override", async () => {
-    const input = {
+    const message = {
+      platform: "test",
       groupId: "limited-group",
-      rawText: "@Pi hello",
+      text: "@Pi hello",
       callerId: "user1",
       isDM: false,
-      source: "chat-sdk" as const,
+      isReplyToBot: false,
+      attachments: [],
     };
 
     // Set a lower limit for this group
@@ -164,46 +178,50 @@ describe("Runtime rate limiting", () => {
     runtime.db.setGroupConfig("limited-group", "rate_limit", "1", "test");
 
     // First request should be allowed
-    const r1 = await runtime.handleRawInput(input);
+    const r1 = await runtime.handleRawInput(message, "chat-sdk");
     expect(r1.type).toBe("assistant");
 
     // Second request should be denied (limit is 1)
-    const r2 = await runtime.handleRawInput(input);
+    const r2 = await runtime.handleRawInput(message, "chat-sdk");
     expect(r2.type).toBe("denied");
     expect(r2.reason).toBe("Rate limit exceeded. Try again shortly.");
   });
 
   test("ignored messages don't count toward rate limit", async () => {
-    const ignoredInput = {
+    const ignoredMessage = {
+      platform: "test",
       groupId: "test-group",
-      rawText: "just a regular message without trigger",
+      text: "just a regular message without trigger",
       callerId: "user1",
       isDM: false,
-      source: "chat-sdk" as const,
+      isReplyToBot: false,
+      attachments: [],
     };
 
-    const triggeredInput = {
+    const triggeredMessage = {
+      platform: "test",
       groupId: "test-group",
-      rawText: "@Pi hello",
+      text: "@Pi hello",
       callerId: "user1",
       isDM: false,
-      source: "chat-sdk" as const,
+      isReplyToBot: false,
+      attachments: [],
     };
 
     // Send many ignored messages
     for (let i = 0; i < 10; i++) {
-      const result = await runtime.handleRawInput(ignoredInput);
+      const result = await runtime.handleRawInput(ignoredMessage, "chat-sdk");
       expect(result.type).toBe("ignore");
     }
 
     // Triggered messages should still be allowed (limit is 3)
-    const r1 = await runtime.handleRawInput(triggeredInput);
+    const r1 = await runtime.handleRawInput(triggeredMessage, "chat-sdk");
     expect(r1.type).toBe("assistant");
 
-    const r2 = await runtime.handleRawInput(triggeredInput);
+    const r2 = await runtime.handleRawInput(triggeredMessage, "chat-sdk");
     expect(r2.type).toBe("assistant");
 
-    const r3 = await runtime.handleRawInput(triggeredInput);
+    const r3 = await runtime.handleRawInput(triggeredMessage, "chat-sdk");
     expect(r3.type).toBe("assistant");
   });
 });

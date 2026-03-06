@@ -123,7 +123,7 @@ describe("createSlackMessageHandler", () => {
       prompt: "hello",
       callerId: "slack:U123",
       role: "member",
-      reply: "Hi there!",
+      result: { reply: "Hi there!", files: [] },
     }));
 
     const msg = fakeMessage({ text: "@Pi hello", userId: "U123" });
@@ -135,7 +135,10 @@ describe("createSlackMessageHandler", () => {
     expect(call.groupId).toBe("slack:C999");
     expect(call.callerId).toBe("slack:U123");
     expect(call.isDM).toBe(false);
-    expect(call.source).toBe("chat-sdk");
+    // Source is now the second argument
+    const source = (core.handleRawInput as ReturnType<typeof mock>).mock
+      .calls[0][1];
+    expect(source).toBe("chat-sdk");
 
     expect(thread.post).toHaveBeenCalledWith("Hi there!");
     expect(thread.subscribe).toHaveBeenCalled();
@@ -165,7 +168,7 @@ describe("createSlackMessageHandler", () => {
       prompt: "hello",
       callerId: "slack:U123",
       role: "member",
-      reply: "Hi from DM!",
+      result: { reply: "Hi from DM!", files: [] },
     }));
 
     const msg = fakeMessage({ text: "hello", userId: "U123" });
@@ -199,7 +202,7 @@ describe("createSlackMessageHandler", () => {
       command: "stop",
       callerId: "slack:U123",
       role: "admin",
-      reply: "Stopped.",
+      result: { reply: "Stopped.", files: [] },
     }));
 
     const msg = fakeMessage({ text: "@Pi stop" });
@@ -223,7 +226,7 @@ describe("createSlackMessageHandler", () => {
         prompt: "hello",
         callerId: "slack:U123",
         role: "member",
-        reply: "Hi!",
+        result: { reply: "Hi!", files: [] },
       };
     });
 

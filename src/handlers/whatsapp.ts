@@ -2,6 +2,7 @@ import type { Message, Thread } from "chat";
 import type { AppConfig } from "../config.js";
 import type { MercuryCoreRuntime } from "../core/runtime.js";
 import { loadTriggerConfig, matchTrigger } from "../core/trigger.js";
+import type { IngressMessage } from "../types.js";
 
 function resolveCallerId(message: Message, thread: Thread): string {
   const userId = message.author.userId || "unknown";
@@ -53,23 +54,26 @@ export function createWhatsAppMessageHandler(opts: {
       await thread.startTyping();
     }
 
-    const result = await core.handleRawInput({
+    // Construct IngressMessage for the new handleRawInput signature
+    const ingress: IngressMessage = {
+      platform: thread.adapter.name,
       groupId: thread.id,
-      rawText: message.text,
       callerId,
       authorName: message.author.userName,
+      text: message.text,
       isDM,
       isReplyToBot,
-      source: "chat-sdk",
       attachments: Array.isArray(attachments) ? attachments : [],
-    });
+    };
+
+    const result = await core.handleRawInput(ingress, "chat-sdk");
 
     if (result.type === "ignore") return;
 
-    if (result.type === "assistant" && result.reply) {
-      await thread.post(result.reply);
-    } else if (result.type === "command" && result.reply) {
-      await thread.post(result.reply);
+    if (result.type === "assistant" && result.result?.reply) {
+      await thread.post(result.result.reply);
+    } else if (result.type === "command" && result.result?.reply) {
+      await thread.post(result.result.reply);
     } else if (result.type === "denied") {
       await thread.post(result.reason);
     }

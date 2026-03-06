@@ -20,6 +20,7 @@ import type { MercuryCoreRuntime } from "../core/runtime.js";
 import { loadTriggerConfig, matchTrigger } from "../core/trigger.js";
 import { logger } from "../logger.js";
 import type { Db } from "../storage/db.js";
+import type { IngressMessage } from "../types.js";
 
 /**
  * Determine if a Discord thread is a DM.
@@ -121,19 +122,24 @@ export function createDiscordMessageHandler(
         await thread.startTyping();
       }
 
-      const result = await core.handleRawInput({
+      // Construct IngressMessage for the new handleRawInput signature
+      const ingress: IngressMessage = {
+        platform: "discord",
         groupId,
-        rawText: text, // Use converted text with @userName
         callerId,
         authorName: message.author.userName,
+        text, // Use converted text with @userName
         isDM,
         isReplyToBot,
-        source: "chat-sdk",
-      });
+        attachments: [],
+      };
+
+      const result = await core.handleRawInput(ingress, "chat-sdk");
 
       if (result.type === "ignore") return;
 
-      const replyText = result.type === "denied" ? result.reason : result.reply;
+      const replyText =
+        result.type === "denied" ? result.reason : result.result?.reply;
       if (replyText) {
         logger.info("Discord reply", {
           groupId,

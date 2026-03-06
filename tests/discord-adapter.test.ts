@@ -89,7 +89,7 @@ describe("createDiscordMessageHandler", () => {
       prompt: "hello",
       callerId: "discord:U123",
       role: "member",
-      reply: "Hi there!",
+      result: { reply: "Hi there!", files: [] },
     }));
 
     const msg = fakeMessage({ text: "@Pi hello", userId: "U123" });
@@ -101,7 +101,6 @@ describe("createDiscordMessageHandler", () => {
     expect(call.groupId).toBe("discord:111222333:444555666");
     expect(call.callerId).toBe("discord:U123");
     expect(call.isDM).toBe(false);
-    expect(call.source).toBe("chat-sdk");
 
     expect(thread.post).toHaveBeenCalledWith("Hi there!");
     expect(thread.subscribe).toHaveBeenCalled();
@@ -129,7 +128,7 @@ describe("createDiscordMessageHandler", () => {
       prompt: "hello",
       callerId: "discord:U123",
       role: "member",
-      reply: "Hi from DM!",
+      result: { reply: "Hi from DM!", files: [] },
     }));
 
     const msg = fakeMessage({ text: "hello", userId: "U123" });
@@ -163,7 +162,7 @@ describe("createDiscordMessageHandler", () => {
       command: "stop",
       callerId: "discord:U123",
       role: "admin",
-      reply: "Stopped.",
+      result: { reply: "Stopped.", files: [] },
     }));
 
     const msg = fakeMessage({ text: "@Pi stop" });
@@ -187,7 +186,7 @@ describe("createDiscordMessageHandler", () => {
         prompt: "hello",
         callerId: "discord:U123",
         role: "member",
-        reply: "Hi!",
+        result: { reply: "Hi!", files: [] },
       };
     });
 
@@ -231,7 +230,7 @@ describe("createDiscordMessageHandler", () => {
       prompt: "hi",
       callerId: "discord:U123",
       role: "member",
-      reply: "Hello!",
+      result: { reply: "Hello!", files: [] },
     }));
 
     const msg = fakeMessage({ text: "@Pi hi" });
@@ -284,7 +283,7 @@ describe("createDiscordMessageHandler", () => {
       prompt: "what about tomorrow?",
       callerId: "discord:U123",
       role: "member",
-      reply: "Tomorrow looks good!",
+      result: { reply: "Tomorrow looks good!", files: [] },
     }));
 
     // Message is a reply to bot (no trigger pattern)
@@ -297,7 +296,7 @@ describe("createDiscordMessageHandler", () => {
     const call = (core.handleRawInput as ReturnType<typeof mock>).mock
       .calls[0][0];
     expect(call.isReplyToBot).toBe(true);
-    expect(call.rawText).toBe("what about tomorrow?");
+    expect(call.text).toBe("what about tomorrow?");
   });
 
   test("starts typing for reply-to-bot without explicit trigger", async () => {
@@ -307,7 +306,7 @@ describe("createDiscordMessageHandler", () => {
       prompt: "followup question",
       callerId: "discord:U123",
       role: "member",
-      reply: "Here's your answer!",
+      result: { reply: "Here's your answer!", files: [] },
     }));
 
     // Reply to bot without trigger

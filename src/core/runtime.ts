@@ -10,7 +10,12 @@ import {
   ensureGroupWorkspace,
   ensurePiResourceDir,
 } from "../storage/memory.js";
-import type { MessageAttachment, MessageSender } from "../types.js";
+import type {
+  ContainerResult,
+  IngressMessage,
+  MessageAttachment,
+  MessageSender,
+} from "../types.js";
 import { GroupQueue } from "./group-queue.js";
 import { RateLimiter } from "./rate-limiter.js";
 import { type RouteResult, routeInput } from "./router.js";
@@ -71,14 +76,14 @@ export class MercuryCoreRuntime {
 
   startScheduler(sender?: MessageSender): void {
     this.scheduler.start(async (task) => {
-      const reply = await this.executePrompt(
+      const result = await this.executePrompt(
         task.groupId,
         task.prompt,
         "scheduler",
         task.createdBy,
       );
       if (!task.silent && sender) {
-        await sender.send(task.groupId, reply);
+        await sender.send(task.groupId, result.reply, result.files);
       }
     });
   }
@@ -87,42 +92,36 @@ export class MercuryCoreRuntime {
     this.scheduler.stop();
   }
 
-  async handleRawInput(input: {
-    groupId: string;
-    rawText: string;
-    callerId: string;
-    authorName?: string;
-    isDM: boolean;
-    isReplyToBot?: boolean;
-    source: Exclude<InputSource, "scheduler">;
-    attachments?: MessageAttachment[];
-  }): Promise<RouteResult & { reply?: string }> {
+  async handleRawInput(
+    message: IngressMessage,
+    source: Exclude<InputSource, "scheduler">,
+  ): Promise<RouteResult & { result?: ContainerResult }> {
     const route = routeInput({
-      rawText: input.rawText,
-      groupId: input.groupId,
-      callerId: input.callerId,
-      isDM: input.isDM,
-      isReplyToBot: input.isReplyToBot,
+      text: message.text,
+      groupId: message.groupId,
+      callerId: message.callerId,
+      isDM: message.isDM,
+      isReplyToBot: message.isReplyToBot,
       db: this.db,
       config: this.config,
     });
 
     if (route.type === "command") {
-      const reply = this.executeCommand(input.groupId, route.command);
-      return { ...route, reply };
+      const reply = this.executeCommand(message.groupId, route.command);
+      return { ...route, result: { reply, files: [] } };
     }
 
     // Check rate limit for assistant requests (not commands, not ignored messages)
     if (route.type === "assistant") {
       // Check per-group override first
-      const groupLimit = this.db.getGroupConfig(input.groupId, "rate_limit");
+      const groupLimit = this.db.getGroupConfig(message.groupId, "rate_limit");
       const effectiveLimit = groupLimit
         ? Number.parseInt(groupLimit, 10)
         : this.config.rateLimitPerUser;
 
       if (
         effectiveLimit > 0 &&
-        !this.checkRateLimit(input.groupId, input.callerId, effectiveLimit)
+        !this.checkRateLimit(message.groupId, message.callerId, effectiveLimit)
       ) {
         return {
           type: "denied",
@@ -133,18 +132,14 @@ export class MercuryCoreRuntime {
 
     if (route.type !== "assistant") {
       // Store ambient messages in group chats (non-triggered, non-DM)
-      if (
-        route.type === "ignore" &&
-        input.source === "chat-sdk" &&
-        !input.isDM
-      ) {
-        const ambientText = input.authorName
-          ? `${input.authorName}: ${input.rawText.trim()}`
-          : input.rawText.trim();
+      if (route.type === "ignore" && source === "chat-sdk" && !message.isDM) {
+        const ambientText = message.authorName
+          ? `${message.authorName}: ${message.text.trim()}`
+          : message.text.trim();
 
         if (ambientText) {
-          this.db.ensureGroup(input.groupId);
-          this.db.addMessage(input.groupId, "ambient", ambientText);
+          this.db.ensureGroup(message.groupId);
+          this.db.addMessage(message.groupId, "ambient", ambientText);
         }
       }
 
@@ -152,14 +147,14 @@ export class MercuryCoreRuntime {
     }
 
     try {
-      const reply = await this.executePrompt(
-        input.groupId,
+      const result = await this.executePrompt(
+        message.groupId,
         route.prompt,
-        input.source,
-        input.callerId,
-        input.attachments,
+        source,
+        message.callerId,
+        message.attachments,
       );
-      return { ...route, reply };
+      return { ...route, result };
     } catch (error) {
       if (error instanceof ContainerError) {
         switch (error.reason) {
@@ -327,7 +322,7 @@ export class MercuryCoreRuntime {
     _source: InputSource,
     callerId: string,
     attachments?: MessageAttachment[],
-  ): Promise<string> {
+  ): Promise<ContainerResult> {
     this.db.ensureGroup(groupId);
     this.db.addMessage(groupId, "user", prompt, attachments);
 
@@ -354,7 +349,7 @@ export class MercuryCoreRuntime {
           this.extensionCtx,
         );
         if (result?.block) {
-          return result.block.reason;
+          return { reply: result.block.reason, files: [] };
         }
         if (result?.systemPrompt) {
           extraEnv = {
@@ -388,7 +383,7 @@ export class MercuryCoreRuntime {
           this.extensionCtx,
         );
         if (result?.suppress) {
-          return "";
+          return { reply: "", files: [] };
         }
         if (result?.reply !== undefined) {
           reply = result.reply;
@@ -396,7 +391,9 @@ export class MercuryCoreRuntime {
       }
 
       this.db.addMessage(groupId, "assistant", reply);
-      return reply;
+
+      // TODO: Scan outbox/ for files (implemented in #97)
+      return { reply, files: [] };
     });
   }
 }
