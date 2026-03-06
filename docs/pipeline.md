@@ -182,6 +182,23 @@ DMs always match regardless of mode.
 
 Replying to a bot message triggers a response without explicit `@mention`. Works on WhatsApp and Discord. Not implemented for Slack.
 
+## Chat API (Direct Bridge)
+
+`POST /chat` provides a synchronous HTTP bridge for external agents, scripts, or CLIs. No platform adapter needed — it constructs an `IngressMessage` directly and runs through the same pipeline.
+
+```bash
+mercury chat "hello"
+mercury chat --group my-project "check status"
+echo "summarize" | mercury chat
+curl -X POST localhost:8787/chat -H 'Content-Type: application/json' \
+  -d '{"text": "hello", "callerId": "api:my-agent"}'
+```
+
+Request: `{ text, callerId?, groupId?, authorName? }`
+Response: `{ reply, files }`
+
+Messages are always treated as DMs with `isReplyToBot: true`, so they always trigger a response regardless of trigger mode.
+
 ## Adding a New Platform
 
 1. Implement `PlatformBridge` in `src/bridges/<platform>.ts`

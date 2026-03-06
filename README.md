@@ -120,6 +120,9 @@ mercury init      # Initialize project
 mercury run       # Start the assistant
 mercury build     # Rebuild container image
 mercury status    # Show status
+mercury chat "hello"             # Send a message to the running instance
+mercury chat --group my-project "check status"
+echo "summarize" | mercury chat  # Pipe input
 mercury kb-distill [--backfill]  # Run KB distillation
 
 # Extension management

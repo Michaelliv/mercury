@@ -67,7 +67,8 @@ src/
 │       ├── config.ts               # /api/config/*
 │       ├── groups.ts               # /api/groups/*
 │       ├── control.ts              # /api/whoami, /api/stop, /api/compact
-│       └── extensions.ts           # /api/ext/*
+│       ├── extensions.ts           # /api/ext/*
+│       └── chat.ts                 # /chat (direct agent bridge)
 │
 ├── agent/
 │   ├── container-runner.ts     # Spawns Docker containers
@@ -178,6 +179,16 @@ Internal API used by `mrctl` from inside containers:
 | `/api/ext/:name/auth` | POST | Permission check for extension CLI |
 
 Auth: `X-Mercury-Caller` + `X-Mercury-Group` headers.
+
+### Chat API (direct bridge)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/chat` | POST | Send a message and get a synchronous reply |
+
+No auth required. Request body: `{ text, callerId?, groupId?, authorName? }`. Returns `{ reply, files }`.
+
+CLI wrapper: `mercury chat "hello"` or `echo "msg" | mercury chat`.
 
 ## Extension System
 
