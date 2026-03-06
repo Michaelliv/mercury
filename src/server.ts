@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import type { WhatsAppBaileysAdapter } from "./adapters/whatsapp.js";
 import type { AppConfig } from "./config.js";
 import { createApiApp } from "./core/api.js";
+import { createChatRoute } from "./core/routes/chat.js";
 import { createDashboardRoutes } from "./core/routes/dashboard.js";
 import type { MercuryCoreRuntime } from "./core/runtime.js";
 import type { ConfigRegistry } from "./extensions/config-registry.js";
@@ -138,6 +139,7 @@ export function createApp(ctx: ServerContext): Hono {
   });
 
   app.route("/api", apiApp);
+  app.route("/chat", createChatRoute(core));
 
   // ─── Webhooks ───────────────────────────────────────────────────────────
 

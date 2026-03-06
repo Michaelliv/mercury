@@ -1188,6 +1188,104 @@ function extensionsListAction(): void {
   }
 }
 
+// Chat command — direct bridge to talk to the running Mercury instance
+program
+  .command("chat [text...]")
+  .description("Send a message to Mercury and get a reply")
+  .option("-p, --port <port>", "Mercury server port", "8787")
+  .option("-g, --group <groupId>", "Group ID for the conversation")
+  .option("--caller <callerId>", "Caller ID", "cli:user")
+  .option("--json", "Output raw JSON response")
+  .action(
+    async (
+      textParts: string[],
+      options: {
+        port: string;
+        group?: string;
+        caller: string;
+        json?: boolean;
+      },
+    ) => {
+      // Read from args or stdin
+      let text: string;
+      if (textParts.length > 0) {
+        text = textParts.join(" ");
+      } else if (!process.stdin.isTTY) {
+        text = readFileSync("/dev/stdin", "utf-8").trim();
+      } else {
+        console.error("Usage: mercury chat <message>");
+        console.error('       echo "message" | mercury chat');
+        process.exit(1);
+      }
+
+      if (!text) {
+        console.error("Error: empty message");
+        process.exit(1);
+      }
+
+      const url = `http://localhost:${options.port}/chat`;
+      const body: Record<string, string> = {
+        text,
+        callerId: options.caller,
+      };
+      if (options.group) body.groupId = options.group;
+
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: res.statusText }));
+          console.error(
+            `Error: ${(err as { error?: string }).error || res.statusText}`,
+          );
+          process.exit(1);
+        }
+
+        const data = (await res.json()) as {
+          reply: string;
+          files: Array<{
+            filename: string;
+            path: string;
+            mimeType: string;
+            sizeBytes: number;
+          }>;
+          error?: string;
+        };
+
+        if (options.json) {
+          console.log(JSON.stringify(data, null, 2));
+        } else {
+          if (data.reply) console.log(data.reply);
+          if (data.files && data.files.length > 0) {
+            console.error(
+              `\n[${data.files.length} file(s): ${data.files.map((f) => f.filename).join(", ")}]`,
+            );
+          }
+        }
+      } catch (err) {
+        if (
+          err instanceof TypeError &&
+          (err.message.includes("fetch") ||
+            err.message.includes("ECONNREFUSED"))
+        ) {
+          console.error(
+            `Error: cannot connect to Mercury at localhost:${options.port}`,
+          );
+          console.error("Is Mercury running? Try: mercury service status");
+        } else {
+          console.error(
+            `Error: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+        process.exit(1);
+      }
+    },
+  );
+
 // Extension commands
 program
   .command("add <source>")
