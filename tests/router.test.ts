@@ -31,10 +31,11 @@ function route(
   overrides: Partial<Parameters<typeof routeInput>[0]> = {},
 ): RouteResult {
   return routeInput({
-    rawText: "@Pi hello",
+    text: "@Pi hello",
     groupId: "g1",
     callerId: "admin1",
     isDM: false,
+    isReplyToBot: false,
     db,
     config,
     ...overrides,
@@ -43,7 +44,7 @@ function route(
 
 describe("routeInput — trigger matching", () => {
   test("matches @Pi trigger in group", () => {
-    const r = route({ rawText: "@Pi hello world" });
+    const r = route({ text: "@Pi hello world" });
     expect(r.type).toBe("assistant");
     if (r.type === "assistant") {
       expect(r.prompt).toBe("hello world");
@@ -51,7 +52,7 @@ describe("routeInput — trigger matching", () => {
   });
 
   test("matches Pi trigger in group", () => {
-    const r = route({ rawText: "Pi what time is it" });
+    const r = route({ text: "Pi what time is it" });
     expect(r.type).toBe("assistant");
     if (r.type === "assistant") {
       expect(r.prompt).toBe("what time is it");
@@ -59,12 +60,12 @@ describe("routeInput — trigger matching", () => {
   });
 
   test("ignores message without trigger in group", () => {
-    const r = route({ rawText: "hello everyone" });
+    const r = route({ text: "hello everyone" });
     expect(r.type).toBe("ignore");
   });
 
   test("DM always matches even without trigger", () => {
-    const r = route({ rawText: "hello", isDM: true });
+    const r = route({ text: "hello", isDM: true });
     expect(r.type).toBe("assistant");
     if (r.type === "assistant") {
       expect(r.prompt).toBe("hello");
@@ -72,7 +73,7 @@ describe("routeInput — trigger matching", () => {
   });
 
   test("DM strips trigger when present", () => {
-    const r = route({ rawText: "@Pi hello", isDM: true });
+    const r = route({ text: "@Pi hello", isDM: true });
     expect(r.type).toBe("assistant");
     if (r.type === "assistant") {
       expect(r.prompt).toBe("hello");
@@ -80,12 +81,12 @@ describe("routeInput — trigger matching", () => {
   });
 
   test("empty text is ignored", () => {
-    const r = route({ rawText: "" });
+    const r = route({ text: "" });
     expect(r.type).toBe("ignore");
   });
 
   test("whitespace-only text is ignored", () => {
-    const r = route({ rawText: "   " });
+    const r = route({ text: "   " });
     expect(r.type).toBe("ignore");
   });
 });
@@ -100,7 +101,7 @@ describe("routeInput — role resolution", () => {
   });
 
   test("unknown user gets member role", () => {
-    const r = route({ rawText: "@Pi hello", callerId: "user99" });
+    const r = route({ text: "@Pi hello", callerId: "user99" });
     expect(r.type).toBe("assistant");
     if (r.type === "assistant") {
       expect(r.role).toBe("member");
@@ -133,7 +134,7 @@ describe("routeInput — permission gating", () => {
 
 describe("routeInput — chat commands", () => {
   test("admin can execute stop command", () => {
-    const r = route({ rawText: "@Pi stop" });
+    const r = route({ text: "@Pi stop" });
     expect(r.type).toBe("command");
     if (r.type === "command") {
       expect(r.command).toBe("stop");
@@ -141,7 +142,7 @@ describe("routeInput — chat commands", () => {
   });
 
   test("admin can execute compact command", () => {
-    const r = route({ rawText: "@Pi compact" });
+    const r = route({ text: "@Pi compact" });
     expect(r.type).toBe("command");
     if (r.type === "command") {
       expect(r.command).toBe("compact");
@@ -149,7 +150,7 @@ describe("routeInput — chat commands", () => {
   });
 
   test("member cannot execute stop command", () => {
-    const r = route({ rawText: "@Pi stop", callerId: "user1" });
+    const r = route({ text: "@Pi stop", callerId: "user1" });
     expect(r.type).toBe("denied");
   });
 
@@ -157,7 +158,7 @@ describe("routeInput — chat commands", () => {
     db.ensureGroup("g1");
     db.setGroupConfig("g1", "role.member.permissions", "prompt,stop", "system");
 
-    const r = route({ rawText: "@Pi stop", callerId: "user1" });
+    const r = route({ text: "@Pi stop", callerId: "user1" });
     expect(r.type).toBe("command");
     if (r.type === "command") {
       expect(r.command).toBe("stop");
@@ -165,17 +166,17 @@ describe("routeInput — chat commands", () => {
   });
 
   test("command requires trigger (not just 'stop' in group)", () => {
-    const r = route({ rawText: "stop" });
+    const r = route({ text: "stop" });
     expect(r.type).toBe("ignore");
   });
 
   test("command works in DM without trigger", () => {
-    const r = route({ rawText: "stop", callerId: "admin1", isDM: true });
+    const r = route({ text: "stop", callerId: "admin1", isDM: true });
     expect(r.type).toBe("command");
   });
 
   test("partial command match goes to assistant, not command", () => {
-    const r = route({ rawText: "@Pi stop all" });
+    const r = route({ text: "@Pi stop all" });
     expect(r.type).toBe("assistant");
     if (r.type === "assistant") {
       expect(r.prompt).toBe("stop all");
@@ -185,7 +186,7 @@ describe("routeInput — chat commands", () => {
 
 describe("routeInput — edge cases", () => {
   test("trigger-only message in group routes to assistant", () => {
-    const r = route({ rawText: "@Pi" });
+    const r = route({ text: "@Pi" });
     expect(r.type).toBe("assistant");
     if (r.type === "assistant") {
       expect(r.prompt).toBe("@Pi");
@@ -198,7 +199,7 @@ describe("routeInput — per-group trigger config", () => {
     db.ensureGroup("g1");
     db.setGroupConfig("g1", "trigger.patterns", "Hey Bot", "system");
 
-    const r = route({ rawText: "Hey Bot do stuff" });
+    const r = route({ text: "Hey Bot do stuff" });
     expect(r.type).toBe("assistant");
     if (r.type === "assistant") {
       expect(r.prompt).toBe("do stuff");
@@ -209,7 +210,7 @@ describe("routeInput — per-group trigger config", () => {
     db.ensureGroup("g1");
     db.setGroupConfig("g1", "trigger.match", "always", "system");
 
-    const r = route({ rawText: "random message no trigger" });
+    const r = route({ text: "random message no trigger" });
     expect(r.type).toBe("assistant");
     if (r.type === "assistant") {
       expect(r.prompt).toBe("random message no trigger");
@@ -221,11 +222,11 @@ describe("routeInput — per-group trigger config", () => {
     db.setGroupConfig("g1", "trigger.match", "prefix", "system");
 
     // @Pi at start works
-    const r1 = route({ rawText: "@Pi hello" });
+    const r1 = route({ text: "@Pi hello" });
     expect(r1.type).toBe("assistant");
 
     // @Pi in middle fails
-    const r2 = route({ rawText: "hey @Pi hello" });
+    const r2 = route({ text: "hey @Pi hello" });
     expect(r2.type).toBe("ignore");
   });
 });
@@ -233,7 +234,7 @@ describe("routeInput — per-group trigger config", () => {
 describe("routeInput — reply-to-bot behavior", () => {
   test("reply to bot triggers response without explicit mention", () => {
     const r = route({
-      rawText: "what about tomorrow?",
+      text: "what about tomorrow?",
       isReplyToBot: true,
       callerId: "user1",
     });
@@ -245,7 +246,7 @@ describe("routeInput — reply-to-bot behavior", () => {
 
   test("reply to bot uses full text (no trigger stripping)", () => {
     const r = route({
-      rawText: "can you explain more?",
+      text: "can you explain more?",
       isReplyToBot: true,
       callerId: "user1",
     });
@@ -258,7 +259,7 @@ describe("routeInput — reply-to-bot behavior", () => {
   test("reply to bot in DM does not double-trigger", () => {
     // DMs already auto-trigger, so reply flag shouldn't change behavior
     const r = route({
-      rawText: "hello",
+      text: "hello",
       isDM: true,
       isReplyToBot: true,
       callerId: "user1",
@@ -271,7 +272,7 @@ describe("routeInput — reply-to-bot behavior", () => {
 
   test("non-reply without trigger is ignored", () => {
     const r = route({
-      rawText: "random message",
+      text: "random message",
       isReplyToBot: false,
       callerId: "user1",
     });
@@ -281,7 +282,7 @@ describe("routeInput — reply-to-bot behavior", () => {
   test("reply to bot with trigger present strips trigger", () => {
     // If user replies AND includes trigger, trigger stripping should work
     const r = route({
-      rawText: "@Pi what about tomorrow?",
+      text: "@Pi what about tomorrow?",
       isReplyToBot: true,
       callerId: "user1",
     });

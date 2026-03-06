@@ -14,6 +14,7 @@ import {
   type WAMessage,
   type WASocket,
 } from "@whiskeysockets/baileys";
+import { mimeToExt } from "../core/media.js";
 import { logger } from "../logger.js";
 import type { MediaType, MessageAttachment } from "../types.js";
 
@@ -36,43 +37,6 @@ export interface MediaDownloadOptions {
   maxSizeBytes: number;
   /** Base directory for media storage (group workspace) */
   outputDir: string;
-}
-
-/**
- * MIME type to file extension mapping.
- */
-const MIME_TO_EXT: Record<string, string> = {
-  // Images
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/gif": "gif",
-  "image/webp": "webp",
-  // Audio
-  "audio/ogg": "ogg",
-  "audio/ogg; codecs=opus": "ogg",
-  "audio/mpeg": "mp3",
-  "audio/mp4": "m4a",
-  "audio/aac": "aac",
-  // Video
-  "video/mp4": "mp4",
-  "video/3gpp": "3gp",
-  // Documents
-  "application/pdf": "pdf",
-  "application/msword": "doc",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-    "docx",
-  "application/vnd.ms-excel": "xls",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
-  "text/plain": "txt",
-};
-
-/**
- * Get file extension from MIME type.
- */
-function getExtFromMime(mimeType: string): string {
-  // Handle MIME types with parameters (e.g., "audio/ogg; codecs=opus")
-  const baseMime = mimeType.split(";")[0].trim();
-  return MIME_TO_EXT[baseMime] || MIME_TO_EXT[mimeType] || "bin";
 }
 
 /**
@@ -233,12 +197,12 @@ export async function downloadWhatsAppMedia(
       return null;
     }
 
-    // Ensure media directory exists
-    const mediaDir = path.join(options.outputDir, "media");
+    // Ensure inbox directory exists
+    const mediaDir = path.join(options.outputDir, "inbox");
     fs.mkdirSync(mediaDir, { recursive: true });
 
     // Generate filename: {timestamp}-{type}.{ext}
-    const ext = getExtFromMime(mediaInfo.mimeType);
+    const ext = mimeToExt(mediaInfo.mimeType);
     const filename = mediaInfo.filename
       ? `${Date.now()}-${mediaInfo.filename}`
       : `${Date.now()}-${mediaInfo.type}.${ext}`;

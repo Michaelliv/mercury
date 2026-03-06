@@ -181,5 +181,5 @@ These would require custom tools/extensions (not included by default).
 ## See Also
 
 - [container-lifecycle.md](./container-lifecycle.md) — Container timeouts
-- [ingress.md](./ingress.md) — Message routing
+- [pipeline.md](./pipeline.md) — Message routing
 - [agent-browser docs](https://github.com/vercel-labs/agent-browser) — Full CLI reference

@@ -81,7 +81,7 @@ Each chat group gets its own workspace and pi session. Messages are routed, queu
 
 | Feature | Description | Docs |
 |---------|-------------|------|
-| **Multi-platform** | WhatsApp, Slack, Discord | [docs/ingress.md](docs/ingress.md) |
+| **Multi-platform** | WhatsApp, Slack, Discord | [docs/pipeline.md](docs/pipeline.md) |
 | **Memory** | Obsidian-compatible vault per group | [docs/memory.md](docs/memory.md) |
 | **Scheduled Tasks** | Cron-based recurring prompts | [docs/scheduler.md](docs/scheduler.md) |
 | **Permissions** | Role-based access control | [docs/permissions.md](docs/permissions.md) |
@@ -251,7 +251,7 @@ mrctl config set trigger_patterns "@Bot,Bot"
 
 ## Docs
 
-- [Ingress (adapters)](docs/ingress.md)
+- [Message pipeline](docs/pipeline.md)
 - [Memory system](docs/memory.md)
 - [Scheduled tasks](docs/scheduler.md)
 - [Permissions](docs/permissions.md)

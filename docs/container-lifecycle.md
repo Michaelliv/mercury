@@ -82,7 +82,7 @@ Message received
   │
   ├─► Wait for completion
   │     │
-  │     ├─► Success (exit 0) → parse reply → respond
+  │     ├─► Success (exit 0) → parse reply + scan outbox/ → respond
   │     ├─► Timeout → kill container → ContainerError(timeout)
   │     ├─► OOM (exit 137) → ContainerError(oom)
   │     ├─► Aborted → ContainerError(aborted)
@@ -217,7 +217,7 @@ WARN  Using custom agent image
 
 ```ts
 runner.cleanupOrphans()     // Remove orphaned containers (called on startup)
-runner.reply(input)         // Run container, returns reply string
+runner.reply(input)         // Run container, returns ContainerResult (reply + outbox files)
 runner.abort(groupId)       // Kill container for a group
 runner.killAll()            // Kill all running containers (shutdown)
 runner.isRunning(groupId)   // Check if container is active

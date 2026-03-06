@@ -19,15 +19,15 @@ const CHAT_COMMANDS: Record<string, string> = {
 };
 
 export function routeInput(input: {
-  rawText: string;
+  text: string;
   groupId: string;
   callerId: string;
   isDM: boolean;
-  isReplyToBot?: boolean;
+  isReplyToBot: boolean;
   db: Db;
   config: AppConfig;
 }): RouteResult {
-  const text = input.rawText.trim();
+  const text = input.text.trim();
   if (!text) return { type: "ignore" };
 
   const seededAdmins = input.config.admins

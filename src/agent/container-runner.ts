@@ -7,9 +7,14 @@ import fs from "node:fs";
 import path, { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AppConfig } from "../config.js";
+import { scanOutbox } from "../core/outbox.js";
 import { type Logger, logger } from "../logger.js";
 import { getApiKeyFromPiAuthFile } from "../storage/pi-auth.js";
-import type { MessageAttachment, StoredMessage } from "../types.js";
+import type {
+  ContainerResult,
+  MessageAttachment,
+  StoredMessage,
+} from "../types.js";
 import { ContainerError } from "./container-error.js";
 
 const START = "---MERCURY_CONTAINER_RESULT_START---";
@@ -175,7 +180,7 @@ export class AgentContainerRunner {
     callerId: string;
     attachments?: MessageAttachment[];
     extraEnv?: Record<string, string>;
-  }): Promise<string> {
+  }): Promise<ContainerResult> {
     const globalDir = path.resolve(this.config.globalDir);
     const groupsRoot = path.resolve(this.config.groupsDir);
 
@@ -278,7 +283,7 @@ export class AgentContainerRunner {
 
     const startTime = Date.now();
 
-    return new Promise<string>((resolve, reject) => {
+    return new Promise<ContainerResult>((resolve, reject) => {
       const proc = spawn("docker", args, {
         stdio: ["pipe", "pipe", "pipe"],
       });
@@ -410,7 +415,10 @@ export class AgentContainerRunner {
           );
           return;
         }
-        resolve(parsed.reply ?? "Done.");
+
+        const replyText = parsed.reply ?? "Done.";
+        const files = scanOutbox(input.groupWorkspace, startTime);
+        resolve({ reply: replyText, files });
       });
 
       proc.stdin.write(JSON.stringify(payload));

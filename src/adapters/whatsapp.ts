@@ -195,6 +195,10 @@ export class WhatsAppBaileysAdapter
     return { status: "disconnected" };
   }
 
+  get socket(): WASocket | undefined {
+    return this.sock;
+  }
+
   get botUserId(): string | undefined {
     const jid = this.sock?.user?.id;
     if (!jid) return undefined;

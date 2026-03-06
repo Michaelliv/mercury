@@ -100,7 +100,7 @@ When users ask about mercury's capabilities, configuration, or how things work, 
 | Path | Contents |
 |------|----------|
 | /docs/mercury/README.md | Overview, commands, triggers, permissions, tasks, config |
-| /docs/mercury/docs/ingress.md | Adapter message flow (WhatsApp, Slack, Discord) |
+| /docs/mercury/docs/pipeline.md | Adapter message flow (WhatsApp, Slack, Discord) |
 | /docs/mercury/docs/media/ | Media handling (downloads, attachments) |
 | /docs/mercury/docs/subagents.md | Delegating to sub-agents |
 | /docs/mercury/docs/web-search.md | Web search capabilities |

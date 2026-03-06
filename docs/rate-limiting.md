@@ -122,5 +122,5 @@ Message 13: ✓ allowed (1/10)
 
 ## See Also
 
-- [ingress.md](./ingress.md) — Message flow and routing
+- [pipeline.md](./pipeline.md) — Message flow and routing
 - [container-lifecycle.md](./container-lifecycle.md) — Container timeouts (another abuse protection)

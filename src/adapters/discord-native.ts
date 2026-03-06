@@ -116,6 +116,10 @@ export class DiscordNativeAdapter
     return this.client.user?.id;
   }
 
+  get discordClient(): Client {
+    return this.client;
+  }
+
   async initialize(chat: ChatInstance): Promise<void> {
     this.chat = chat;
     logger.info("Discord native adapter initializing");
