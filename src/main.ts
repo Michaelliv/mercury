@@ -2,10 +2,14 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createMemoryState } from "@chat-adapter/state-memory";
 import { type Adapter, Chat, type Message, type Thread } from "chat";
-import { createDiscordMessageHandler } from "./adapters/discord.js";
+import type { DiscordNativeAdapter } from "./adapters/discord-native.js";
 import { setupAdapters } from "./adapters/setup.js";
-import { createSlackMessageHandler } from "./adapters/slack.js";
+import type { WhatsAppBaileysAdapter } from "./adapters/whatsapp.js";
+import { DiscordBridge } from "./bridges/discord.js";
+import { SlackBridge } from "./bridges/slack.js";
+import { WhatsAppBridge } from "./bridges/whatsapp.js";
 import { loadConfig, resolveProjectPath } from "./config.js";
+import { createMessageHandler } from "./core/handler.js";
 import { MercuryCoreRuntime } from "./core/runtime.js";
 import { ConfigRegistry } from "./extensions/config-registry.js";
 import { ensureDerivedImage } from "./extensions/image-builder.js";
@@ -15,9 +19,10 @@ import {
   installBuiltinSkills,
   installExtensionSkills,
 } from "./extensions/skills.js";
-import { createWhatsAppMessageHandler } from "./handlers/whatsapp.js";
 import { configureLogger, logger } from "./logger.js";
 import { createApp } from "./server.js";
+import { ensureGroupWorkspace } from "./storage/memory.js";
+import type { NormalizeContext, PlatformBridge } from "./types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PACKAGE_ROOT = join(__dirname, "..");
@@ -83,42 +88,56 @@ async function main() {
     state: createMemoryState(),
   });
 
-  // ─── Message Handlers ───────────────────────────────────────────────────
+  // ─── Platform Bridges ─────────────────────────────────────────────────
 
-  const handleSlackMessage = createSlackMessageHandler({
-    core,
-    db: core.db,
-    config,
-  });
+  const bridges: Record<string, PlatformBridge> = {};
 
-  const handleDiscordMessage = createDiscordMessageHandler({
-    core,
-    db: core.db,
-    config,
-  });
+  if (adapters.whatsapp) {
+    bridges.whatsapp = new WhatsAppBridge(
+      adapters.whatsapp as WhatsAppBaileysAdapter,
+    );
+  }
+  if (adapters.discord) {
+    bridges.discord = new DiscordBridge(
+      adapters.discord as DiscordNativeAdapter,
+    );
+  }
+  if (adapters.slack) {
+    bridges.slack = new SlackBridge(
+      adapters.slack,
+      process.env.MERCURY_SLACK_BOT_TOKEN!,
+    );
+  }
 
-  const handleWhatsAppMessage = createWhatsAppMessageHandler({
-    core,
-    config,
-  });
+  const normalizeCtx: NormalizeContext = {
+    botUserName: config.chatSdkUserName,
+    getWorkspace: (groupId) =>
+      ensureGroupWorkspace(resolveProjectPath(config.groupsDir), groupId),
+    media: {
+      enabled: config.mediaEnabled,
+      maxSizeBytes: config.mediaMaxSizeMb * 1024 * 1024,
+    },
+  };
+
+  const handlers = new Map<string, ReturnType<typeof createMessageHandler>>();
+  for (const [name, bridge] of Object.entries(bridges)) {
+    handlers.set(
+      name,
+      createMessageHandler({ bridge, core, config, ctx: normalizeCtx }),
+    );
+  }
 
   const handleMessage = async (
     thread: Thread,
     message: Message,
     isNew: boolean,
   ) => {
-    if (message.author.isMe) return;
-
-    // Delegate to platform-specific handlers
-    if (thread.adapter.name === "slack") {
-      return handleSlackMessage(thread, message, isNew);
+    const handler = handlers.get(thread.adapter.name);
+    if (handler) {
+      await handler(thread, message, isNew);
+    } else {
+      logger.warn("No bridge for adapter", { adapter: thread.adapter.name });
     }
-    if (thread.adapter.name === "discord") {
-      return handleDiscordMessage(thread, message, isNew);
-    }
-
-    // Default: WhatsApp handler
-    return handleWhatsAppMessage(thread, message, isNew);
   };
 
   bot.onNewMention((thread, message) => {
@@ -142,17 +161,17 @@ async function main() {
   // ─── Message Sender (for scheduled tasks) ───────────────────────────────
 
   const messageSender: import("./types.js").MessageSender = {
-    async send(groupId, text) {
+    async send(groupId, text, files) {
       const [platform] = groupId.split(":");
-      const adapter = adapters[platform];
-      if (!adapter) {
-        logger.warn("Message dropped — no adapter for platform", {
+      const bridge = bridges[platform];
+      if (!bridge) {
+        logger.warn("Message dropped — no bridge for platform", {
           groupId,
           platform,
         });
         return;
       }
-      await adapter.postMessage(groupId, text);
+      await bridge.sendReply(groupId, text, files);
     },
   };
 

@@ -43,16 +43,21 @@ src/
 │   ├── discord.ts              # Discord interactions
 │   └── discord-native.ts       # Discord gateway
 │
-├── handlers/               # Message handlers
-│   └── whatsapp.ts             # WhatsApp message processing
+├── bridges/                # Platform bridge implementations
+│   ├── whatsapp.ts             # WhatsApp PlatformBridge
+│   ├── discord.ts              # Discord PlatformBridge
+│   └── slack.ts                # Slack PlatformBridge
 │
 ├── core/
 │   ├── runtime.ts              # Main orchestrator
+│   ├── handler.ts              # Unified message handler
 │   ├── router.ts               # Message routing
 │   ├── group-queue.ts          # Per-group concurrency
 │   ├── task-scheduler.ts       # Task scheduling (cron + at)
 │   ├── permissions.ts          # RBAC
 │   ├── trigger.ts              # Pattern matching
+│   ├── media.ts                # Shared media utilities (MIME, URL download)
+│   ├── outbox.ts               # Outbox directory scanner
 │   ├── rate-limiter.ts         # Rate limiting
 │   ├── api.ts                  # API app factory (Hono)
 │   ├── api-types.ts            # Shared API types
@@ -205,7 +210,7 @@ Permissions are now dynamic. Built-in permissions are static; extensions registe
 
 | Doc | Topic |
 |-----|-------|
-| [ingress.md](docs/ingress.md) | Adapter message flow |
+| [pipeline.md](docs/pipeline.md) | Message pipeline (ingress/egress) |
 | [memory.md](docs/memory.md) | Obsidian vault system |
 | [scheduler.md](docs/scheduler.md) | Task scheduling (cron + at) |
 | [permissions.md](docs/permissions.md) | RBAC system |
