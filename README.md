@@ -103,7 +103,8 @@ Each group gets an Obsidian-compatible workspace:
 ├── .obsidian/             # Vault marker
 ├── entities/              # Memory pages
 ├── daily/                 # Daily notes
-└── media/                 # Downloaded files
+├── inbox/                 # Media received from users
+└── outbox/                # Files produced by the agent
 ```
 
 The agent can read/write files. You can open it in Obsidian.

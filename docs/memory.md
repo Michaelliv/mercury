@@ -11,6 +11,8 @@ Each group workspace is a valid Obsidian vault. The agent uses [napkin](https://
 ├── .obsidian/          # Makes it a valid Obsidian vault
 ├── entities/           # Entity pages (people, projects, things)
 ├── daily/              # Daily conversation logs
+├── inbox/              # Media received from users
+├── outbox/             # Files produced by the agent
 ├── AGENTS.md           # Persistent instructions (loaded by pi)
 └── .pi/                # pi resources
 ```

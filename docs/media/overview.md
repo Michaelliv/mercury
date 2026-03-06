@@ -1,28 +1,28 @@
 # Media Handling
 
-Mercury downloads and processes media attachments from chat platforms, saving them to group workspaces and passing them to pi for processing.
+Mercury downloads and processes media attachments from chat platforms, saving them to group workspaces and passing them to pi for processing. Models can also produce files via the `outbox/` directory.
 
 ## Supported Platforms
 
-| Platform | Status | Document |
-|----------|--------|----------|
-| WhatsApp | ✅ Implemented | [whatsapp.md](./whatsapp.md) |
-| Slack | ❌ Not yet | — |
-| Discord | ❌ Not yet | — |
+| Platform | Ingress | Egress | Details |
+|----------|---------|--------|---------|
+| WhatsApp | ✅ Baileys socket | ✅ image/video/audio/document | [whatsapp.md](./whatsapp.md) |
+| Discord | ✅ CDN URL download | ✅ channel.send() with files | Via `DiscordBridge` |
+| Slack | ✅ URL download (auth'd) | ✅ files.uploadV2 | Via `SlackBridge` |
 
 ## Architecture
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌─────────┐
-│   Platform   │────▶│   Adapter    │────▶│   Runtime    │────▶│   pi    │
-│  (WhatsApp)  │     │ (download)   │     │ (store/pass) │     │ (view)  │
+│   Platform   │────▶│   Bridge     │────▶│   Runtime    │────▶│   pi    │
+│              │     │ (normalize)  │     │ (store/pass) │     │ (view)  │
 └──────────────┘     └──────────────┘     └──────────────┘     └─────────┘
-                            │
-                            ▼
-                     ┌──────────────┐
-                     │  Workspace   │
-                     │   /media/    │
-                     └──────────────┘
+                            │                    │
+                            ▼                    ▼
+                     ┌──────────────┐     ┌──────────────┐
+                     │  Workspace   │     │  Workspace   │
+                     │   /inbox/    │     │   /outbox/   │
+                     └──────────────┘     └──────────────┘
 ```
 
 ## Media Types
@@ -50,19 +50,33 @@ interface MessageAttachment {
 
 ## Storage
 
-Media files are saved to the group workspace:
+### Ingress (inbox/)
+
+Incoming media files are saved to the group workspace:
 
 ```
-.mercury/groups/<group_id>/media/<timestamp>-<type>.<ext>
+.mercury/groups/<group_id>/inbox/<timestamp>-<type>.<ext>
 ```
 
 Example:
 ```
-.mercury/groups/whatsapp_123456_g_us/media/
+.mercury/groups/whatsapp_123456_g_us/inbox/
 ├── 1709012345-image.jpg
 ├── 1709012400-voice.ogg
 └── 1709012500-document.pdf
 ```
+
+### Egress (outbox/)
+
+The model writes files to `outbox/` during a container run. After exit, the runtime scans for files with `mtime >= startTime` and attaches them to the reply:
+
+```
+.mercury/groups/<group_id>/outbox/
+├── chart.png
+└── summary.pdf
+```
+
+Previous outbox files are not deleted — only new or modified files are sent. See [pipeline.md](../pipeline.md) for details.
 
 ## Database Schema
 
@@ -116,7 +130,5 @@ Check out this sunset!
 ## Future Enhancements
 
 - [ ] Voice transcription via OpenAI Whisper
-- [ ] Slack file downloads
-- [ ] Discord attachment downloads
 - [ ] Video frame extraction
 - [ ] PDF text extraction

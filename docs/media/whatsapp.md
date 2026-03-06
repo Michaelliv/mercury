@@ -35,7 +35,7 @@ downloadWhatsAppMedia(msg, sock, options)
 MessageAttachment { path, type, mimeType, sizeBytes?, filename? }
        │
        ▼
-Saved to: {workspace}/media/{timestamp}-{type}.{ext}
+Saved to: {workspace}/inbox/{timestamp}-{type}.{ext}
 ```
 
 ## Implementation

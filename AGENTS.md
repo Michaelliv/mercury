@@ -140,6 +140,12 @@ resources/
 | `extensions/image-builder.ts` | Derived Docker image with extension CLIs, content-hash cache |
 | `extensions/napkin/index.ts` | Built-in extension: vault dirs, CLI, skill, workspace_init hook |
 | `extensions/kb-distill/index.ts` | Built-in extension: distillation job, config, dashboard widget |
+| `core/handler.ts` | Unified message handler — platform-agnostic, uses PlatformBridge |
+| `core/media.ts` | Shared media utilities — MIME detection, URL downloader |
+| `core/outbox.ts` | Outbox scanner — detects new/modified files by mtime |
+| `bridges/whatsapp.ts` | WhatsApp PlatformBridge — normalize + sendReply with Baileys |
+| `bridges/discord.ts` | Discord PlatformBridge — normalize + sendReply with discord.js |
+| `bridges/slack.ts` | Slack PlatformBridge — normalize + sendReply with Slack API |
 
 ## Database Schema
 
