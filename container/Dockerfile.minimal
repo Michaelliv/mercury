@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install CLIs
-RUN bun add -g @mariozechner/pi-coding-agent agent-browser napkin-ai
+RUN bun add -g @mariozechner/pi-coding-agent
 
 # Install Playwright Chromium
 RUN bunx playwright install chromium
