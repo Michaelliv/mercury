@@ -51,6 +51,8 @@ export interface WorkspaceInitEvent {
   spaceId: string;
   /** Absolute path to the workspace directory. */
   workspace: string;
+  /** Container-relative path to the workspace (e.g. /spaces/main). */
+  containerWorkspace: string;
 }
 
 export interface BeforeContainerEvent {
@@ -62,6 +64,8 @@ export interface BeforeContainerEvent {
   callerId: string;
   /** Absolute path to the space workspace. */
   workspace: string;
+  /** Container-relative path to the workspace (e.g. /spaces/main). */
+  containerWorkspace: string;
 }
 
 export interface AfterContainerEvent {

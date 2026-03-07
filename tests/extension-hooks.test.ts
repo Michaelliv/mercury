@@ -90,12 +90,13 @@ describe("HookDispatcher — non-mutating events", () => {
 
     await dispatcher.emit(
       "workspace_init",
-      { spaceId: "g1", workspace: "/tmp/ws" },
+      { spaceId: "g1", workspace: "/tmp/ws", containerWorkspace: "/spaces/g1" },
       ctx,
     );
     expect(testGlobals.__wsEvent).toEqual({
       spaceId: "g1",
       workspace: "/tmp/ws",
+      containerWorkspace: "/spaces/g1",
     });
     delete testGlobals.__wsEvent;
   });
@@ -172,6 +173,7 @@ describe("HookDispatcher — before_container", () => {
         prompt: "hello",
         callerId: "user1",
         workspace: "/tmp",
+        containerWorkspace: "/spaces/g1",
       },
       ctx,
     );
@@ -194,6 +196,7 @@ describe("HookDispatcher — before_container", () => {
         prompt: "hello",
         callerId: "user1",
         workspace: "/tmp",
+        containerWorkspace: "/spaces/g1",
       },
       ctx,
     );
@@ -218,6 +221,7 @@ describe("HookDispatcher — before_container", () => {
         prompt: "hello",
         callerId: "user1",
         workspace: "/tmp",
+        containerWorkspace: "/spaces/g1",
       },
       ctx,
     );
@@ -246,6 +250,7 @@ describe("HookDispatcher — before_container", () => {
         prompt: "hello",
         callerId: "user1",
         workspace: "/tmp",
+        containerWorkspace: "/spaces/g1",
       },
       ctx,
     );
@@ -280,6 +285,7 @@ describe("HookDispatcher — before_container", () => {
         prompt: "hello",
         callerId: "user1",
         workspace: "/tmp",
+        containerWorkspace: "/spaces/g1",
       },
       ctx,
     );
@@ -314,6 +320,7 @@ describe("HookDispatcher — before_container", () => {
         prompt: "hello",
         callerId: "user1",
         workspace: "/tmp",
+        containerWorkspace: "/spaces/g1",
       },
       ctx,
     );
@@ -344,6 +351,7 @@ describe("HookDispatcher — before_container", () => {
         prompt: "hello",
         callerId: "user1",
         workspace: "/tmp",
+        containerWorkspace: "/spaces/g1",
       },
       ctx,
     );

@@ -345,11 +345,14 @@ export class MercuryCoreRuntime {
         spaceId,
       );
 
+      // Container-relative workspace path
+      const containerWorkspace = `/spaces/${spaceId}`;
+
       // Emit workspace_init hook (extensions should be idempotent)
       if (this.hooks && this.extensionCtx) {
         await this.hooks.emit(
           "workspace_init",
-          { spaceId, workspace },
+          { spaceId, workspace, containerWorkspace },
           this.extensionCtx,
         );
       }
@@ -358,7 +361,7 @@ export class MercuryCoreRuntime {
       let extraEnv: Record<string, string> | undefined;
       if (this.hooks && this.extensionCtx) {
         const result = await this.hooks.emitBeforeContainer(
-          { spaceId, prompt, callerId, workspace },
+          { spaceId, prompt, callerId, workspace, containerWorkspace },
           this.extensionCtx,
         );
         if (result?.block) {
