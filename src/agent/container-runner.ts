@@ -221,8 +221,8 @@ export class AgentContainerRunner {
 
     const envPairs = [
       // Internal vars (set by code, not from env)
-      { key: "HOME", value: "/home/node" },
-      { key: "PI_CODING_AGENT_DIR", value: "/home/node/.pi/agent" },
+      { key: "HOME", value: "/root" },
+      { key: "PI_CODING_AGENT_DIR", value: "/root/.pi/agent" },
       { key: "CALLER_ID", value: input.callerId },
       { key: "SPACE_ID", value: input.spaceId },
       {
@@ -250,7 +250,7 @@ export class AgentContainerRunner {
       "-v",
       `${spacesRoot}:/spaces`,
       "-v",
-      `${globalDir}:/home/node/.pi/agent`,
+      `${globalDir}:/root/.pi/agent`,
       "-v",
       `${readmePath}:/docs/mercury/README.md:ro`,
       "-v",
