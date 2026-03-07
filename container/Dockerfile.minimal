@@ -24,6 +24,9 @@ COPY src/cli/mrctl.ts /app/src/cli/mrctl.ts
 COPY src/extensions/reserved.ts /app/src/extensions/reserved.ts
 COPY src/types.ts /app/src/types.ts
 
+# Pi extension for RBAC enforcement — blocks denied extension CLIs in bash
+COPY resources/extensions/permission-guard.ts /app/extensions/permission-guard.ts
+
 RUN echo '#!/bin/sh\nbun run /app/src/cli/mrctl.ts "$@"' > /usr/local/bin/mrctl && \
     chmod +x /usr/local/bin/mrctl
 

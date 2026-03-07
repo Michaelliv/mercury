@@ -121,6 +121,8 @@ function runPi(payload: Payload): Promise<string> {
       process.env.MODEL_PROVIDER || "anthropic",
       "--model",
       process.env.MODEL || "claude-opus-4-6",
+      "-e",
+      "/app/extensions/permission-guard.ts",
       "--append-system-prompt",
       systemPrompt,
       buildPrompt(payload),

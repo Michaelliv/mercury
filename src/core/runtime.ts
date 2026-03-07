@@ -18,6 +18,7 @@ import type {
   MessageSender,
 } from "../types.js";
 import { compactSession } from "./compact.js";
+import { hasPermission, resolveRole } from "./permissions.js";
 import { RateLimiter } from "./rate-limiter.js";
 import { type RouteResult, routeInput } from "./router.js";
 import { SpaceQueue } from "./space-queue.js";
@@ -35,6 +36,7 @@ export class MercuryCoreRuntime {
   readonly rateLimiter: RateLimiter;
   hooks: HookDispatcher | null = null;
   private extensionCtx: MercuryExtensionContext | null = null;
+  private extensionRegistry: ExtensionRegistry | null = null;
   private readonly shutdownHooks: ShutdownHook[] = [];
   private shuttingDown = false;
   private signalHandlersInstalled = false;
@@ -69,6 +71,7 @@ export class MercuryCoreRuntime {
    */
   initExtensions(registry: ExtensionRegistry): void {
     this.hooks = new HookDispatcher(registry, logger);
+    this.extensionRegistry = registry;
     this.extensionCtx = {
       db: this.db,
       config: this.config,
@@ -374,6 +377,32 @@ export class MercuryCoreRuntime {
           };
         } else if (result?.env) {
           extraEnv = result.env;
+        }
+      }
+
+      // Compute denied extension CLIs for this caller
+      if (this.extensionRegistry) {
+        const cliExtensions = this.extensionRegistry.getCliExtensions();
+        if (cliExtensions.length > 0) {
+          const seededAdmins = this.config.admins
+            ? this.config.admins
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : [];
+          const role = resolveRole(this.db, spaceId, callerId, seededAdmins);
+          const denied = cliExtensions
+            .filter(
+              (ext) =>
+                ext.cli && !hasPermission(this.db, spaceId, role, ext.name),
+            )
+            .map((ext) => ext.cli!.name);
+          if (denied.length > 0) {
+            extraEnv = {
+              ...extraEnv,
+              MERCURY_DENIED_CLIS: denied.join(","),
+            };
+          }
         }
       }
 
