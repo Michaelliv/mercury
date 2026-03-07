@@ -39,6 +39,8 @@ export function inferConversationKind(
       return externalId.includes(":") ? "thread" : "channel";
     case "slack":
       return "channel";
+    case "teams":
+      return "channel";
     default:
       return "group";
   }

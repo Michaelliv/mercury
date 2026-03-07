@@ -1,4 +1,4 @@
-import type { Message, Thread } from "chat";
+import type { Adapter, Message } from "chat";
 import type { AppConfig } from "../config.js";
 import { logger } from "../logger.js";
 import type { NormalizeContext, PlatformBridge } from "../types.js";
@@ -21,9 +21,9 @@ export function createMessageHandler(opts: MessageHandlerOptions) {
     .filter(Boolean);
 
   return async (
-    thread: Thread,
+    adapter: Adapter,
+    threadId: string,
     message: Message,
-    isNew: boolean,
   ): Promise<void> => {
     try {
       if (message.author.isMe) return;
@@ -33,7 +33,7 @@ export function createMessageHandler(opts: MessageHandlerOptions) {
         return;
       }
 
-      const { externalId, isDM } = bridge.parseThread(thread.id);
+      const { externalId, isDM } = bridge.parseThread(threadId);
       const kind = inferConversationKind(bridge.platform, externalId, isDM);
       const resolution = resolveConversation(
         core.db,
@@ -53,16 +53,22 @@ export function createMessageHandler(opts: MessageHandlerOptions) {
       const triggerResult = matchTrigger(text, triggerConfig, isDM);
 
       if (triggerResult.matched) {
-        if (isNew) await thread.subscribe();
-        await thread.startTyping();
+        try {
+          await adapter.startTyping(threadId);
+        } catch {
+          // Best-effort typing indicator
+        }
       }
 
-      const ingress = await bridge.normalize(thread.id, message, ctx, spaceId);
+      const ingress = await bridge.normalize(threadId, message, ctx, spaceId);
       if (!ingress) return;
 
       if (ingress.isReplyToBot && !isDM && !triggerResult.matched) {
-        if (isNew) await thread.subscribe();
-        await thread.startTyping();
+        try {
+          await adapter.startTyping(threadId);
+        } catch {
+          // Best-effort typing indicator
+        }
       }
 
       const result = await core.handleRawInput(ingress, "chat-sdk");
@@ -70,7 +76,7 @@ export function createMessageHandler(opts: MessageHandlerOptions) {
       if (result.type === "ignore") return;
 
       if (result.type === "denied") {
-        await bridge.sendReply(thread.id, result.reason);
+        await bridge.sendReply(threadId, result.reason);
         return;
       }
 
@@ -78,7 +84,7 @@ export function createMessageHandler(opts: MessageHandlerOptions) {
         const { reply, files } = result.result;
         if (reply || files.length > 0) {
           await bridge.sendReply(
-            thread.id,
+            threadId,
             reply,
             files.length > 0 ? files : undefined,
           );
@@ -87,7 +93,7 @@ export function createMessageHandler(opts: MessageHandlerOptions) {
     } catch (err) {
       logger.error("Message handler error", {
         platform: bridge.platform,
-        threadId: thread.id,
+        threadId,
         error: err instanceof Error ? err.message : String(err),
       });
     }

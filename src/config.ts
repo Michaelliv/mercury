@@ -58,6 +58,9 @@ const schema = z.object({
   // ─── Slack ──────────────────────────────────────────────────────────
   enableSlack: z.coerce.boolean().default(false),
 
+  // ─── Teams ───────────────────────────────────────────────────────────
+  enableTeams: z.coerce.boolean().default(false),
+
   // ─── WhatsApp ───────────────────────────────────────────────────────
   enableWhatsApp: z.coerce.boolean().default(false),
 
@@ -115,6 +118,9 @@ export function loadConfig(): AppConfig {
 
     // Slack
     enableSlack: process.env.MERCURY_ENABLE_SLACK,
+
+    // Teams
+    enableTeams: process.env.MERCURY_ENABLE_TEAMS,
 
     // WhatsApp
     enableWhatsApp: process.env.MERCURY_ENABLE_WHATSAPP,

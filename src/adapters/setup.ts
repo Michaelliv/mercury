@@ -1,4 +1,5 @@
 import { createSlackAdapter } from "@chat-adapter/slack";
+import { createTeamsAdapter } from "@chat-adapter/teams";
 import type { Adapter } from "chat";
 import type { AppConfig } from "../config.js";
 import { resolveProjectPath } from "../config.js";
@@ -23,6 +24,32 @@ export function setupAdapters(config: AppConfig): Record<string, Adapter> {
     adapters.slack = createSlackAdapter({
       botToken: process.env.MERCURY_SLACK_BOT_TOKEN,
       signingSecret: process.env.MERCURY_SLACK_SIGNING_SECRET,
+    });
+  }
+
+  if (config.enableTeams) {
+    const appId = process.env.MERCURY_TEAMS_APP_ID;
+    const appPassword = process.env.MERCURY_TEAMS_APP_PASSWORD;
+    if (!appId) {
+      throw new Error(
+        "MERCURY_ENABLE_TEAMS=true but MERCURY_TEAMS_APP_ID is not set",
+      );
+    }
+    if (!appPassword) {
+      throw new Error(
+        "MERCURY_ENABLE_TEAMS=true but MERCURY_TEAMS_APP_PASSWORD is not set",
+      );
+    }
+    adapters.teams = createTeamsAdapter({
+      appId,
+      appPassword,
+      appType:
+        (process.env.MERCURY_TEAMS_APP_TYPE as
+          | "SingleTenant"
+          | "MultiTenant"
+          | undefined) ?? "SingleTenant",
+      appTenantId: process.env.MERCURY_TEAMS_APP_TENANT_ID,
+      userName: config.chatSdkUserName,
     });
   }
 

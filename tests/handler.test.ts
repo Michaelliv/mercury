@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { Message, parseMarkdown } from "chat";
+import { type Adapter, Message, parseMarkdown } from "chat";
 import { createMessageHandler } from "../src/core/handler.js";
 import type {
   ContainerResult,
@@ -88,24 +88,17 @@ function mockCore(handleResult?: {
   };
 }
 
-// ─── Mock Thread ────────────────────────────────────────────────────────
+// ─── Mock Adapter ───────────────────────────────────────────────────────
 
-function mockThread(id = "test-thread") {
+function mockAdapter(name = "test") {
   const actions: string[] = [];
   return {
-    thread: {
-      id,
-      adapter: { name: "test" },
-      subscribe: async () => {
-        actions.push("subscribe");
-      },
-      startTyping: async () => {
+    adapter: {
+      name,
+      startTyping: async (_threadId: string) => {
         actions.push("typing");
       },
-      post: async () => {
-        actions.push("post");
-      },
-    } as never,
+    } as unknown as Adapter,
     actions,
   };
 }
@@ -152,10 +145,10 @@ describe("createMessageHandler", () => {
       config: defaultConfig,
       ctx: defaultCtx,
     });
-    const { thread } = mockThread();
+    const { adapter } = mockAdapter();
     const msg = makeMessage("hello", { isMe: true });
 
-    await handler(thread, msg, true);
+    await handler(adapter, "test-thread", msg);
 
     expect(bridge.replyCalls).toHaveLength(0);
   });
@@ -169,10 +162,10 @@ describe("createMessageHandler", () => {
       config: defaultConfig,
       ctx: defaultCtx,
     });
-    const { thread } = mockThread();
+    const { adapter } = mockAdapter();
     const msg = makeMessage("");
 
-    await handler(thread, msg, true);
+    await handler(adapter, "test-thread", msg);
 
     expect(bridge.replyCalls).toHaveLength(0);
   });
@@ -186,10 +179,10 @@ describe("createMessageHandler", () => {
       config: defaultConfig,
       ctx: defaultCtx,
     });
-    const { thread } = mockThread();
+    const { adapter } = mockAdapter();
     const msg = makeMessage("hello");
 
-    await handler(thread, msg, true);
+    await handler(adapter, "test-thread", msg);
 
     expect(bridge.replyCalls).toHaveLength(0);
   });
@@ -203,10 +196,10 @@ describe("createMessageHandler", () => {
       config: defaultConfig,
       ctx: defaultCtx,
     });
-    const { thread, actions } = mockThread();
+    const { adapter, actions } = mockAdapter();
     const msg = makeMessage("@mercury do something");
 
-    await handler(thread, msg, true);
+    await handler(adapter, "test-thread", msg);
 
     expect(actions).toContain("typing");
     expect(handleCalls).toHaveLength(1);
@@ -224,10 +217,10 @@ describe("createMessageHandler", () => {
       config: defaultConfig,
       ctx: defaultCtx,
     });
-    const { thread } = mockThread();
+    const { adapter } = mockAdapter();
     const msg = makeMessage("@mercury hello");
 
-    await handler(thread, msg, true);
+    await handler(adapter, "test-thread", msg);
 
     expect(bridge.replyCalls).toHaveLength(0);
   });
@@ -241,10 +234,10 @@ describe("createMessageHandler", () => {
       config: defaultConfig,
       ctx: defaultCtx,
     });
-    const { thread } = mockThread();
+    const { adapter } = mockAdapter();
     const msg = makeMessage("@mercury hello");
 
-    await handler(thread, msg, true);
+    await handler(adapter, "test-thread", msg);
 
     expect(bridge.replyCalls).toHaveLength(1);
     expect(bridge.replyCalls[0].text).toBe("Rate limited");
@@ -270,10 +263,10 @@ describe("createMessageHandler", () => {
       config: defaultConfig,
       ctx: defaultCtx,
     });
-    const { thread } = mockThread();
+    const { adapter } = mockAdapter();
     const msg = makeMessage("@mercury chart");
 
-    await handler(thread, msg, true);
+    await handler(adapter, "test-thread", msg);
 
     expect(bridge.replyCalls).toHaveLength(1);
     expect(bridge.replyCalls[0].files).toHaveLength(1);
@@ -291,10 +284,10 @@ describe("createMessageHandler", () => {
       config: defaultConfig,
       ctx: defaultCtx,
     });
-    const { thread } = mockThread();
+    const { adapter } = mockAdapter();
     const msg = makeMessage("@mercury hello");
 
-    await handler(thread, msg, true);
+    await handler(adapter, "test-thread", msg);
 
     expect(bridge.replyCalls).toHaveLength(0);
   });
@@ -319,10 +312,10 @@ describe("createMessageHandler", () => {
       config: defaultConfig,
       ctx: defaultCtx,
     });
-    const { thread, actions } = mockThread();
+    const { adapter, actions } = mockAdapter();
     const msg = makeMessage("some reply");
 
-    await handler(thread, msg, true);
+    await handler(adapter, "test-thread", msg);
 
     expect(actions).toContain("typing");
     expect(bridge.replyCalls).toHaveLength(1);
@@ -341,30 +334,12 @@ describe("createMessageHandler", () => {
       config: defaultConfig,
       ctx: defaultCtx,
     });
-    const { thread } = mockThread();
+    const { adapter } = mockAdapter();
     const msg = makeMessage("@mercury hello");
 
     // Should not throw
-    await handler(thread, msg, true);
+    await handler(adapter, "test-thread", msg);
 
     expect(bridge.replyCalls).toHaveLength(0);
-  });
-
-  test("isNew=false does not subscribe", async () => {
-    const bridge = mockBridge();
-    const { core } = mockCore();
-    const handler = createMessageHandler({
-      bridge,
-      core: core as never,
-      config: defaultConfig,
-      ctx: defaultCtx,
-    });
-    const { thread, actions } = mockThread();
-    const msg = makeMessage("@mercury hello");
-
-    await handler(thread, msg, false);
-
-    expect(actions).not.toContain("subscribe");
-    expect(actions).toContain("typing");
   });
 });

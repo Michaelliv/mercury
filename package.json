@@ -40,7 +40,7 @@
   "dependencies": {
     "@chat-adapter/discord": "^4.14.0",
     "@chat-adapter/slack": "^4.14.0",
-    "@chat-adapter/state-memory": "^4.14.0",
+    "@chat-adapter/teams": "^4.17.0",
     "@mariozechner/pi-agent-core": "^0.55.0",
     "@mariozechner/pi-ai": "^0.55.0",
     "@mariozechner/pi-coding-agent": "^0.55.0",

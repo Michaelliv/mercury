@@ -163,6 +163,7 @@ export class WhatsAppBaileysAdapter
   private flushing = false;
   private connectedAtMs = 0;
   private readonly seenMessageIds = new Set<string>();
+  private reconnectAttempt = 0;
   private readonly pushNames = new Map<string, string>();
   private currentQr: string | null = null;
 
@@ -256,6 +257,7 @@ export class WhatsAppBaileysAdapter
         this.currentQr = null; // Clear QR once connected
         this.connectedAtMs = Date.now();
         this.seenMessageIds.clear();
+        this.reconnectAttempt = 0;
         logger.info("WhatsApp connection open");
         void this.flushOutgoingQueue();
         return;
@@ -269,9 +271,15 @@ export class WhatsAppBaileysAdapter
         )?.output?.statusCode;
         logger.warn("WhatsApp connection closed", { reason });
         if (reason !== DisconnectReason.loggedOut) {
+          const delay = Math.min(1000 * 2 ** this.reconnectAttempt, 60_000);
+          this.reconnectAttempt++;
+          logger.info("WhatsApp reconnecting", {
+            attempt: this.reconnectAttempt,
+            delayMs: delay,
+          });
           setTimeout(() => {
             void this.connect();
-          }, 3000);
+          }, delay);
         }
       }
     });
@@ -598,6 +606,15 @@ export class WhatsAppBaileysAdapter
       },
       attachments: [],
     });
+
+    // Mark message as read (blue ticks) immediately on receipt
+    if (this.sock && msg.key.remoteJid) {
+      try {
+        await this.sock.readMessages([msg.key]);
+      } catch {
+        // Best-effort — don't block message processing
+      }
+    }
 
     this.chat?.processMessage(this, threadId, incoming);
   }

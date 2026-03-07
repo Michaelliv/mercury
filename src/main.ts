@@ -1,13 +1,14 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createMemoryState } from "@chat-adapter/state-memory";
-import { Chat, type Message, type Thread } from "chat";
+import type { Adapter, Message } from "chat";
 import type { DiscordNativeAdapter } from "./adapters/discord-native.js";
 import { setupAdapters } from "./adapters/setup.js";
 import type { WhatsAppBaileysAdapter } from "./adapters/whatsapp.js";
 import { DiscordBridge } from "./bridges/discord.js";
 import { SlackBridge } from "./bridges/slack.js";
+import { TeamsBridge } from "./bridges/teams.js";
 import { WhatsAppBridge } from "./bridges/whatsapp.js";
+import { createChatShim } from "./chat-shim.js";
 import { loadConfig, resolveProjectPath } from "./config.js";
 import { createMessageHandler } from "./core/handler.js";
 import { MercuryCoreRuntime } from "./core/runtime.js";
@@ -80,14 +81,6 @@ async function main() {
 
   const adapters = setupAdapters(config);
 
-  // ─── Setup Chat Bot ─────────────────────────────────────────────────────
-
-  const bot = new Chat({
-    userName: config.chatSdkUserName,
-    adapters,
-    state: createMemoryState(),
-  });
-
   // ─── Platform Bridges ─────────────────────────────────────────────────
 
   const bridges: Record<string, PlatformBridge> = {};
@@ -109,6 +102,9 @@ async function main() {
     }
     bridges.slack = new SlackBridge(adapters.slack, slackBotToken);
   }
+  if (adapters.teams) {
+    bridges.teams = new TeamsBridge(adapters.teams);
+  }
 
   const normalizeCtx: NormalizeContext = {
     botUserName: config.chatSdkUserName,
@@ -128,36 +124,26 @@ async function main() {
     );
   }
 
-  const handleMessage = async (
-    thread: Thread,
-    message: Message,
-    isNew: boolean,
-  ) => {
-    const handler = handlers.get(thread.adapter.name);
+  // ─── Message Dispatch ───────────────────────────────────────────────────
+
+  const onMessage = (adapter: Adapter, threadId: string, message: Message) => {
+    const handler = handlers.get(adapter.name);
     if (handler) {
-      await handler(thread, message, isNew);
+      void handler(adapter, threadId, message).catch((error) =>
+        logger.error(
+          "Message handler failed",
+          error instanceof Error ? error : undefined,
+        ),
+      );
     } else {
-      logger.warn("No bridge for adapter", { adapter: thread.adapter.name });
+      logger.warn("No bridge for adapter", { adapter: adapter.name });
     }
   };
 
-  bot.onNewMention((thread, message) => {
-    void handleMessage(thread, message, true).catch((error) =>
-      logger.error(
-        "Message handler failed",
-        error instanceof Error ? error : undefined,
-      ),
-    );
-  });
-
-  bot.onSubscribedMessage((thread, message) => {
-    void handleMessage(thread, message, false).catch((error) =>
-      logger.error(
-        "Message handler failed",
-        error instanceof Error ? error : undefined,
-      ),
-    );
-  });
+  // Chat shim satisfies Chat SDK adapter interface (initialize, webhooks)
+  // without the full Chat routing pipeline (subscriptions, mention routing, locks).
+  // Mercury handles its own routing via conversation resolution + trigger matching.
+  const chatShim = createChatShim(onMessage);
 
   // ─── Message Sender (for scheduled tasks) ───────────────────────────────
 
@@ -189,17 +175,27 @@ async function main() {
   });
   core.onShutdown(() => jobRunner.stop());
 
-  await bot.initialize();
+  // Initialize adapters via shim (calls adapter.initialize(chatShim))
+  for (const [name, adapter] of Object.entries(adapters)) {
+    logger.info("Initializing adapter", { adapter: name });
+    await adapter.initialize(chatShim);
+  }
 
   // ─── Create HTTP Server ─────────────────────────────────────────────────
 
-  const webhooks = bot.webhooks as Record<
+  // Build webhook handlers — each adapter's handleWebhook is called directly
+  const webhooks: Record<
     string,
     (
       request: Request,
       options?: { waitUntil?: (task: Promise<unknown>) => void },
     ) => Promise<Response>
-  >;
+  > = {};
+
+  for (const [name, adapter] of Object.entries(adapters)) {
+    webhooks[name] = (request, options) =>
+      adapter.handleWebhook(request, options);
+  }
 
   const app = createApp({
     core,
@@ -254,6 +250,9 @@ async function main() {
 
   if (adapters.discord) {
     logger.info("Discord enabled (native adapter with persistent connection)");
+  }
+  if (adapters.teams) {
+    logger.info("Teams enabled (webhook via Azure Bot Service)");
   }
   if (adapters.whatsapp) {
     logger.info("WhatsApp enabled", {
