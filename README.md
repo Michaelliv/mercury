@@ -146,59 +146,61 @@ The agent can read/write files. You can open it in Obsidian. Multiple platform c
 
 ## CLI
 
-### mercury
+### `mercury` (host CLI)
 
 ```bash
-mercury init      # Initialize project
-mercury run       # Start the assistant
-mercury build     # Rebuild container image
-mercury status    # Show status
-mercury auth login [provider]    # OAuth login (anthropic, github-copilot, etc.)
-mercury auth logout [provider]   # Remove saved credentials
-mercury auth status              # Show auth status
-mercury auth whatsapp            # WhatsApp QR/pairing code auth
-mercury chat "hello"             # Send a message to the running instance
+# setup + runtime
+mercury init
+mercury run
+mercury build
+mercury status
+
+# auth
+mercury auth login [provider]
+mercury auth logout [provider]
+mercury auth status
+mercury auth whatsapp
+
+# chat + routing
+mercury chat "hello"
 mercury chat --file photo.jpg "what's in this?"
-mercury chat --space my-project "check status"
-echo "summarize" | mercury chat  # Pipe input
-mercury kb-distill [--backfill]  # Run KB distillation
-mercury spaces list             # List spaces
-mercury spaces create <id>      # Create a space
-mercury conversations           # List linked conversations
-mercury conversations --unlinked # List unlinked conversations
-mercury link <conversation-id> <space-id>  # Link a conversation to a space
+mercury chat --space work "check status"
+echo "summarize" | mercury chat
+mercury spaces list
+mercury spaces create <id>
+mercury conversations
+mercury conversations --unlinked
+mercury link <conversation-id> <space-id>
 
-# Extension management
-mercury add ./path/to/extension   # Install from local path
-mercury add npm:<package>         # Install from npm
-mercury add git:<repo-url>        # Install from git
-mercury remove <name>             # Remove extension
-mercury extensions list           # List installed extensions
+# extensions
+mercury add ./path/to/extension
+mercury add npm:<package>
+mercury add git:<repo-url>
+mercury remove <name>
+mercury extensions list
 
-# Service management (preferred for background running)
-mercury service install    # Install as system service
-mercury service uninstall  # Remove service
-mercury service status     # Show service status
-mercury service logs [-f]  # View/tail logs
+# service (recommended for background)
+mercury service install
+mercury service uninstall
+mercury service status
+mercury service logs [-f]
 ```
 
-### mrctl
-
-Management CLI used by the agent inside containers:
+### `mrctl` (in-container API CLI)
 
 ```bash
 mrctl whoami
-mrctl tasks list|create|pause|resume|delete
+mrctl tasks list|create|pause|resume|run|delete
 mrctl roles list|grant|revoke
 mrctl permissions show|set
 mrctl config get|set
 mrctl spaces list|name|delete
-mrctl conversations list [--unlinked]
+mrctl conversations list
 mrctl stop
 mrctl compact
 ```
 
-
+For full command docs, run `mercury --help`, `mercury <command> --help`, or `mrctl help`.
 
 ---
 
